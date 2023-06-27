@@ -3,7 +3,12 @@
         "editorInfo.foreground": "#ff0000"
     },
     "cSpell.words": [
+        "handlings",
+        "NGFWs",
+        "SIEM",
+        "Smurf",
         "Sybex"
     ],
-    "markdown-preview-github-styles.colorTheme": "light"
+    "markdown-preview-github-styles.colorTheme": "light",
+    "cSpell.language": "en-GB"
 }
