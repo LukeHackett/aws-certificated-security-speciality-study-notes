@@ -2,16 +2,5 @@
     "workbench.colorCustomizations": {
         "editorInfo.foreground": "#ff0000"
     },
-    "cSpell.words": [
-        "AICPA",
-        "BYOL",
-        "handlings",
-        "ICFR",
-        "NGFWs",
-        "SIEM",
-        "Smurf",
-        "Sybex"
-    ],
-    "markdown-preview-github-styles.colorTheme": "light",
-    "cSpell.language": "en-GB"
+    "markdown-preview-github-styles.colorTheme": "light"
 }
