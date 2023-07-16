@@ -230,13 +230,101 @@ When using permission boundaries, the resulting permission set that is allowed i
 
 ## Access Management in Amazon S3
 
+Amazon S3 offers a specific set of resource-based policies that allows even finder-grained control over your Amazon S3 environment. Such resource-based policies are divided into two types:
+
+- **Access Control Lists (ACLs)** are lists of grants and users who have permission for then. It's possible to define cross-account read/write permissions using ACLs, which are defined using an Amazon S3-Specific XML Schema. AWS generally recommends that you leverage IAM policies rather than ACLs.
+- **Bucket Policy** provide you with a simple way to define cross-account access to your S3 buckets without setting up IAM roles. Policies are defined using JSON, and can be managed per user-level or per account level. Policies are applied at the bucket level - they do not extend to object-level granularity.
+
 ### Policy Conflicts
 
-### Security Data Transportation in Amazon S3
+When Amazon S3 needs to authorize a request to a bucket or object, it evaluates all access policies, such as user policies and resource-based policies (bucket policy, bucket ACL, and object ACL) associated with the respective target of the request.
+
+The following steps are followed by Amazon S3 when evaluating policy conflicts:
+
+1. Every bucket and object is private by default (principle of least privilege).
+2. Access policies, user policies and resource-based policies (bucket policy, bucket and object ACLs) are all evaluated
+3. If an explicit *deny* is found, evaluation stops and the request is denied.
+4. If an explicit *allow* is found, evaluation stops and the request is allowed. 
+5. In any other case, the request is denied.
+
+***Note:** when dealing with policy conflicts on Amazon S3, the AWS Cloud follows the principle of least privilege where everything is denied by default, unless instructed otherwise by an allow. An explicit deny will always override any other allow policy statement.*
+
+### Secure Data Transportation in Amazon S3
+
+Amazon S3 supports HTTP and HTTPs requests by default, but to guarantee that all data is encrypted in transit, you must block all  non-secure transit requests using a bucket policy (as shown below).
+
+```json
+// Enforce HTTPs (TLS) Bucket Policy
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowRequests",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": "arn:aws:s3:::your-s3-bucket/*"
+    },
+    {
+      "Sid": "ForceSSLRequests",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": "arn:aws:s3:::your-s3-bucket/*",
+      "Condition": {
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    }
+  ]
+}
+```
+
+In the example above, the policy's first statement allows all requests to the bucket, but the second statement blocks all requests that do not match the `"aws:SecureTransport": "false"`.
 
 ### Cross-Region Replication in Amazon S3
 
+*Cross-region replication (CRR)* replicates objects from one region to another in an asynchronous fashion. Such replication can happen between buckets owned by the same AWS account or by different accounts. 
+
+Replication only happens in a one-to-one relation, or simply, from one source to one destination. Once the object is replicated, it is not possible to replicate it again. When CRR is enabled, data replicated is performed using SSL encryption by default - you do not need to write a policy to enforce this.
+
+When CRR is enabled, the following items <u>are replicated:</u>
+
+- New objects created after the replication is activated. Old objects will not be replicated unless they are changed after the replication was activated.
+- Unencrypted objects.
+- Encrypted objects by SSE-S3-managed keys or customer-managed keys (CMKs) stored in Amazon KMS (SSE-KMS). The latter should be explicitly enabled to work.
+- Object metadata, ACL updates, any existing tags, and lock retention information.
+- If you perform a `delete` operation to mark the object as deleted, this marker will be replicated.
+
+The following items represent what <u>is not replicated</u> by the CRR:
+
+- Objects created before the CRR was enabled.
+- Any objects created with SSE-C, or customer-provided encryption keys.
+- Objects deleted through a delete operation with a version ID specified. This prevents malicious deletion of your data.
+
+For cross-region replication to work, you should pay attention to key requirements such as the following:
+
+- Versioning should be enabled in both buckets (source and destination).
+- Make sure that the replication role specified gives all the necessary permissions to replicate and access the objects on the source bucket.
+- If the destination bucket is owned by a different AWS account, the account owner of the destination must grant the required permission to store the replicated objects. It is also possible to change object ownership during replication to the destination bucket.
+- If the owner of the source bucket does not have permissions on the stored objects, the `read` and `read_acp` permissions should be granted; otherwise, replication of these objects will fail.
+- Bucket owner must have permissions to access objects (ACLs) to perform the replication.
+
 ### Amazon S3 Pre-signed URLs
+
+*Pre-signed* URLs allow users and applications to access private objects for a limited period of time. Anyone who has access to a pre-signed URL will have access to the object.
+
+To create pre-signed URLs, you must provide security credentials (e.g. access keys), the bucket name, and the object key that you want to share. By default the expiration time is 1 hour (3600 seconds), but this can be extended up to 7 days.
+
+The example below command below uses the `presign` command to share the `hello.txt` file in the `security-bucket-example-0009` bucket.
+
+```shell
+> aws s3 presign s3://security-bucket-example-0009/hello.txt
+https://security-bucket-example-009/hello.txt?AWSAccessKeyId=EXAMPLE-ACCESS-KEY&Signature=EXHCcBe%EXAMPLEKnz3r8O0AgEXAMPLE&Expires=1555531131
+```
+
+***Note**: the permissions defined by the pre-signed URL are scoped at the object level and do not allow any other operations at the bucket level.*
 
 
 
