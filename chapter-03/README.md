@@ -327,11 +327,53 @@ https://security-bucket-example-009/hello.txt?AWSAccessKeyId=EXAMPLE-ACCESS-KEY&
 ***Note**: the permissions defined by the pre-signed URL are scoped at the object level and do not allow any other operations at the bucket level.*
 
 
-
 ## Identity Federation
+
+Identity federation provides you with the ability to perform access management of your AWS account at one single place. It allows you to exchange valid credentials from external Identity Providers (IdPs) for temporary AWS credentials provided by the Amazon Security Token Service (STS).
+
+The mains aspects of identity federation in the AWS Cloud include:
+
+- **Identity:** is a user in your identity store such as Microsoft Active Directory or Facebook.
+- **Identity Store:** is a central location in which identities are stored. It represents services such as Microsoft Active Directory, Amazon, Apple, Facebook and Google.
+
+- **Identity Broker:** is a client application that performs the authentication of the users against the IdPs, then obtains AWS temporary security credentials
+
+The diagram below illustrates the identity federation process with Microsoft Active Directory to allow login into the AWS Console.
+
+![Identity Federation Workflow](./identity-federation-workflow.png)
 
 ### Amazon Cognito
 
+In scenarios where your mobile or web applications need access to AWS resources, you can take advantage of *web identity federation*. 
+
+Web identity federation allows you to federate access through large-scale web-based identity providers such as Amazon, Google, Facebook, Apple, or any other platform that supports OpenID Connect (OIDC).
+
+*Amazon Cognito* abstracts all heavy lifting related to application authentication and provides a managed service that offers the following secure identity and access management features:
+
+- Sign-up, sign-in, and “forgot my password” flows
+- Web user interface customization and custom authentication domain
+- Custom authentication flow with CAPTCHA or any other form of MFA
+- Supports OAuth 2.0, SAML 2.0, and OpenID Connect
+- Fully managed user directory for your application.
+- Guest user support
+- Access control using role-based access control (RBAC)
+- User data synchronisation between devices
+
+#### Amazon Cognito User Pools
+
+A *user pool* is a secure directory within Amazon Cognito that allows you to manage the users of your web or mobile applications in one single place.
+
+Users in a user pool can sign in with their registered credentials or by using a social identity (such as Amazon, Google, Facebook, SAML 2.0 or OpenID Connect etc).
+
+Upon successful authentication, Amazon Cognito returns a set of JWTs that the application developer can use to secure and authorize access to application APIs or use to obtain AWS temporary credentials.
+
+#### Amazon Cognito Identity Pools
+
+Amazon Cognito *identity pools* allow you to create unique identifiers for guest users who access your application and authenticate these users with identity providers. The identities can then be exchanged for temporary, limited-privilege AWS credentials for access other AWS services. 
+
+Identity pools support both authenticated and unauthenticated journeys (associated with different IAM roles), where an *authenticated identity* represent users who are verified by a web identity provider (Cognito User Pools, Facebook, Amazon, Google etc) or a custom backend authentication process, while *unauthenticated identities* represent guest users.
+
+![Identity Pools Authentication Flow](./identity-pools-authentication-flow.png)
 
 
 ## Multi-Account Management with AWS Organisations
