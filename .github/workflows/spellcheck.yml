@@ -10,7 +10,9 @@ jobs:
     steps:
       - name: Check out the code
         uses: actions/checkout@v3
-      - name: Run spell check
-        uses: streetsidesoftware/cspell-action@v2
+      - uses: actions/setup-node@v3
+        name: Run spell check
         with:
-          incremental_files_only: true
+          node-version: "latest"
+      - run: npm install -g cspell
+      - run: make
