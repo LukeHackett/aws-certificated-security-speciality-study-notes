@@ -1,18 +1,33 @@
 {
     "version": "0.2",
     "language": "en-GB",
+    "minWordLength": 3,
     "words": [
+        "ACK",
         "AICPA",
+        "ARP",
         "BYOL",
-        "handlings",
+        "CRR",
+        "CSF",
+        "DSS",
+        "EMR",
         "ICFR",
         "JWT",
         "JWTs",
         "NGFWs",
         "OIDC",
-        "presign",
+        "PII",
+        "SCP",
         "SIEM",
+        "STP",
+        "SYN",
         "Smurf",
-        "Sybex"
+        "Sybex",
+        "UBA",
+        "acp",
+        "arn",
+        "ero",
+        "handlings",
+        "presign"
     ]
 }

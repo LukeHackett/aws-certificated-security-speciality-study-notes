@@ -365,7 +365,7 @@ A *user pool* is a secure directory within Amazon Cognito that allows you to man
 
 Users in a user pool can sign in with their registered credentials or by using a social identity (such as Amazon, Google, Facebook, SAML 2.0 or OpenID Connect etc).
 
-Upon successful authentication, Amazon Cognito returns a set of JWTs that the application developer can use to secure and authorize access to application APIs or use to obtain AWS temporary credentials.
+Upon successful authentication, Amazon Cognito returns a set of JWTs that the application developer can use to secure and authorise access to application APIs or use to obtain AWS temporary credentials.
 
 #### Amazon Cognito Identity Pools
 
@@ -378,20 +378,94 @@ Identity pools support both authenticated and unauthenticated journeys (associat
 
 ## Multi-Account Management with AWS Organisations
 
+*AWS Organisations* provides you with a centralised view of billing, access control, and the ability to share cross-account resources. Additionally, you can automate account provisioning by using the AWS Organisations APIs.
+
+AWS Accounts can be grouped into organisational units (OU) and can have service control policies (SCPs) assigned to limit the permissions within an account. 
+
+OUs allow you to group accounts and other organisational units in a hierarchical structures, thus providing the ability to mimic your own organisational structure, as shown below.
+
+![Organisations Account Hierarchy](./organisations-account-hierarchy.png)
+
 ### Service Control Policies
+
+Service Control Policies (SCPs) can be used to centrally manage the available of service actions across multiple AWS accounts within your AWS Organisations deployment. SCPs are similar to IAM policies, but behave akin to an IAM *permissions boundary*, which restricts the actions that users, groups, and roles within that account can perform (including the root account).
+
+```json
+// SCP denying access to DynamoDB
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Deny-DynamoDB-Access",
+      "Effect": "Deny",
+      "Action": "dynamodb:*",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+Like IAM *permissions boundaries*, SCPs do not grant any permissions by themselves - users cannot perform any actions that the applied SCPs do not allow. The SCP boundaries always take precedence over the permissions defined through identity and resource-based policies. 
+
+It is important to note that in member accounts of an AWS Organisation, the root user is also affected by SCP boundaries
 
 ### AWS Single Sign-On
 
+AWS Single Sign-On (AWS SSO) is a single sign-on managed service that provides a centralised place for your users to access AWS accounts and other cloud applications.
+
+AWS SSO supports identity federation using SAML 2.0, allowing integration with AWS Managed Microsoft AD and their-party applications such as Azure Active Directory, Office 365, Concur and Salesforce.
 
 
 ## Microsoft AD Federation with AWS 
 
+AWS enables you to implement identity federation to sign in to AWS Console using Microsoft Active Directory (AD) credentials. With identity federation, you can use an existing corporate AD to perform all user administration and thus skip manually creating user credentials in AWS.
+
+AD federation has a couple of key terms:
+
+- **Microsoft Active Directory Federation Services (AD FS)** is a solution that provides single sign-on access and acts as the identity broken between AWS and Microsoft Active Directory. It is usually deployed onto on-premises infrastructure.
+- **Two-Way Trust** is a SAML 2.0 standard that requires you to setup a trust between your AWS account and AD FS. This setup manually exchanges SAML metadata between the two parties; the metadata contains the issuer name, creation date, expiration date, and keys that AWS can use to validate the authentication information (assertions) issued by AD FS.
+
+Although the AWS Certified Security – Specialty exam does not require you to configure a Microsoft AD federation with AWS, you should have a clear understanding of how the process works (see diagram below).
+
+
+![Microsoft AD Federation with AWS](./microsoft-ad-federation-with-aws.png)
 
 
 ## Protection Credentials with AWS Secrets Manager
 
+AWS Secrets Manager is a managed service that allows AWS users to rotate, manage, and retrieve database credentials (RDS and non-RDS), API keys, and other secrets throughout their life cycle.
+
+When using AWS Secrets Manager, you can remove hard-coded credentials, passwords, and any other type of sensitive information in your code, with an API call to the AWS Secrets Manager to retrieve and store secrets programmatically.
+
+AWS Secrets Manager provides integration with AWS CloudFormation through resource types that enable you to create secrets as part of an AWS CloudFormation template.
+
+All secrets managed by AWS Secrets Manager are encrypted at rest using the Amazon Key Management Service (KMS) service.
+
 ### Secrets Permission Management
+
+You can manage the permissions associated with the secrets stored in Secrets Manager by using identity-based and resource-based policies.
+
+When using *identity-based policies* you can grant access to many secrets for that identity (IAM user, IAM group or IAM role) which is useful for an IAM role that is to be assigned to an application that requires access to more than one secret.
+
+When using *resource-based policies* you are able to grant access to multiple principals (such as S3, DynamoDB) to a secret. Additionally, you can defined cross-account permissions for your secrets, especially in scenarios where you have a centralised security account that contains all your secrets.
 
 ### Automatic Secrets Rotation
 
+AWS Secrets Manager also enables you to rotate your credentials automatically for select AWS services and databases, as shown below:
+
+- Amazon Aurora on Amazon RDS
+- MySQL on Amazon RDS
+- PostgreSQL on Amazon RDS
+- Oracle on Amazon RDS
+- MariaDB on Amazon RDS
+- Microsoft SQL Server on Amazon RDS
+- Amazon DocumentDB
+- Amazon Redshift
+
+*Note: Although AWS Secrets Manager handles the rotation of database passwords, the application connecting to the database will need to retrieve the new credentials once rotated.*
+
 ### AWS Secrets Manager vs AWS Systems Manager Parameter Store
+
+AWS Secrets Manager should always be chosen when you need to store database credentials for AWS or third-party databases, manage credential rotation, and provide cross-account access, as AWS Secretes Manager has these functionalities already built in.
+
+AWS Systems Manager Parameter Store offers a central place to store environment configuration for your applications, user-defined parameters, and any other type of encrypted or plain-text information with a lower charge versus AWS Secrets Manager. AWS Systems Manager Parameter Store does not support rotation of secrets.
