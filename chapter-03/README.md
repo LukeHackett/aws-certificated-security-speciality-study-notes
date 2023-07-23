@@ -40,7 +40,7 @@ Groups can be created based upon related to job functions or teams such as admin
 
 ### IAM roles
 
-*IAM roles* have a permission policy that determines what the IAM role can and cannot do in AWS. AN IAM role is not exclusively associated with an IAM user or group; they are assumed by other entities such as IAM users, applications or services.
+*IAM roles* have a permission policy that determines what the IAM role can and cannot do in AWS. An IAM role is not exclusively associated with an IAM user or group; they are assumed by other entities such as IAM users, applications or services.
 
 When an IAM role is assumed, it is granted temporary credentials by the *AWS Security Token Service (STS)*. The temporary credentials are valid throughout the role session usage, have have a lifetime of between 15 minutes and 36 hours (default is 1 hour).
 
@@ -73,7 +73,7 @@ The regular permissions to a developer in the *development* account do not allow
 
 First, an IAM role would need to be setup within the *production* account that has the required permissions (see below).
 
-```json
+```json5
 // [Production Account] Role Permission Policy
 {
   "Version": "2012-10-17",
@@ -99,9 +99,9 @@ First, an IAM role would need to be setup within the *production* account that h
 }
 ```
 
-Next the Role's trust policy must allow a user (or a role) from the *development* account to assume the role in the production account:
+Next the *production* account role's trust policy must allow a user (or a role) from the *development* account to assume the role in the production account:
 
-```json
+```json5
 // [Production Account] Role Trust Policy
 {
   "Version": "2012-10-17",
@@ -117,7 +117,7 @@ Next the Role's trust policy must allow a user (or a role) from the *development
 
 Finally, an IAM role or user will need to be granted permissions to assume the IAM role that was created within the *production* account. For example, the following permissions policy must be added to the IAM user or role.
 
-```json
+```json5
 // [Development Account] IAM Role (or user) permissions policy
 {
   "Version": "2012-10-17",
@@ -191,7 +191,7 @@ The image above shows that the user John, does not have access to the S3 bucket 
 
 Permission boundaries do not add permissions, but define the limits of the permissions attached to them, for example, a user could be granted an administrator policy (see below).
 
-```json
+```json5
 // Administrator user policy
 {
   "Version": "2012-10-17",
@@ -207,7 +207,7 @@ Permission boundaries do not add permissions, but define the limits of the permi
 
 The user can have their administrator policy limited, by applying a permissions boundary. The example below, will limit the user to S3 operations only (event though they have an administrator policy attached)
 
-```json
+```json5
 // Permissions boundary, restricting to Amazon S3 operations only
 {
   "Version": "2012-10-17",
@@ -253,7 +253,7 @@ The following steps are followed by Amazon S3 when evaluating policy conflicts:
 
 Amazon S3 supports HTTP and HTTPs requests by default, but to guarantee that all data is encrypted in transit, you must block all  non-secure transit requests using a bucket policy (as shown below).
 
-```json
+```json5
 // Enforce HTTPs (TLS) Bucket Policy
 {
   "Version": "2012-10-17",
@@ -390,7 +390,7 @@ OUs allow you to group accounts and other organisational units in a hierarchical
 
 Service Control Policies (SCPs) can be used to centrally manage the available of service actions across multiple AWS accounts within your AWS Organisations deployment. SCPs are similar to IAM policies, but behave akin to an IAM *permissions boundary*, which restricts the actions that users, groups, and roles within that account can perform (including the root account).
 
-```json
+```json5
 // SCP denying access to DynamoDB
 {
   "Version": "2012-10-17",
