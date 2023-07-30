@@ -16,6 +16,7 @@
         "JWTs",
         "NGFWs",
         "OIDC",
+        "opsitems",
         "PII",
         "SCP",
         "SIEM",
@@ -28,6 +29,7 @@
         "arn",
         "ero",
         "handlings",
+        "PHD",
         "presign"
     ]
 }
