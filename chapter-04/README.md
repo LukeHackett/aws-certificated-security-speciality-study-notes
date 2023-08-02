@@ -62,7 +62,7 @@ A configuration snapshot is a JSON file that contains the current configuration 
 
 As resources change over time, AWS Config (with its configuration recorder on) keeps track of those changes. AWS Config takes a "photo" of the new configuration each time a detected change happens and stores that new configuration in conjunction with information about what caused the change. The sequence of "pictures" for a given resource, is known as a *configuration timeline* (as shown below).
 
-![AWS Config - Configuration Timeline](./aws-config-timeline.png)
+![AWS Config - Configuration Timeline](./aws-config-configuration-timeline.png)
 
 Timeline events can be exposed to the outside world using a *delivery channel*. The delivery channel defines an S3 bucket and an SNS topic that AWS Config uses to deliver information into (such as *configuration snapshots*).
 
@@ -180,19 +180,97 @@ The *Personal Health Dashboard* (PHD) highlights the most recent issues and noti
 
 ## Stage 3: Events Analysis
 
+After collecting the events, the next step is to analyse them in order to produce a list of “processed” events (or findings). 
+
 ### AWS Config Rules
+
+AWS Config tracks configuration items of your monitored resources, and is notified when a change happens. This notification allows the service to establish if the change leaves the resource in a compliant or non-compliant state. Deducing if a resource is compliant is accomplished by one or more AWS Config rules. 
+
+There are three types of AWS Config rules:
+
+- **Custom rules** trigger a custom AWS Lambda function your create and maintain. AWS Config will pass details about the monitored resource to the function, and the function should return whether or not the resource is compliant.
+- **Managed rules** are a variety of predefined rules that you do not have to create yourself
+- **Service-linked** rules are rules that are provided by AWS services. These rules cannot be edited, and are considered good practices as defined by AWS service development teams
+
+An AWS Config rule can be configured to be triggered in three ways:
+
+- On a *periodic basis* (every 1, 3, 6, 12 or 24 hours)
+- When a *configuration change* is detected (a continuous audit of your monitored resources)
+- *on-demand* basis via an API call or the Management Console
+
+Rules can be resisted to run on certain resource types or via resource tags.
+
+AWS Config keeps a record of the rules' execution, along with each of the resource's reported status (either compliant or non-compliant). It is possible to view the aggregated state of a rule (i.e. the status of all it's target resources), or from the point of the resource (a resource will likely have multiple rules targeting it).
+
+AWS Config provides a *compliant timeline* that shows the compliance status of a resource over time, as shown below.
+
+![AWS Config - Compliance Timeline](./aws-config-compliance-timeline.png)
+
+AWS Config is able to delivery notifications of when a rule is applied to a resource and when the compliance status of a resource changes if there has been a defined Amazon SNS topic.
 
 ### Amazon Inspector
 
+Amazon Inspector evaluates the security status of an Amazon EC2 instance by providing insights into security issues or vulnerabilities. The service gathers information at the network level (*network assessments*) and/or directly from the instance (*host assessments*) via the SSM agent.
+
+*Rules packages* inside Amazon Inspector are collections of predefined security checks (*rules*) to evaluate against an EC2 instance. Each rule has an assigned severity level (high, medium, low, or informational).
+
+An *assessment target* is a list of Amazon EC2 instances that may exist in any region, and in the same account or different accounts (via AWS Organisations). Additionally subset of all instances within an account/region can be defined through the use of a key-value tags on the instances.
+
+An *assessment template* defines which rule packages run on which assessment target. An assessment template can be executed as many times as required, but is usually done so on a periodic basis. The results from each execution are stored within the *assessment run* as a JSON file. The results contains details such as its severity, the date of discovery, description and recommendations on how to deal with it.
+
+For each assessment run, you can generate a documented report (in either PDF or HTML format) with findings information. Additionally, an Amazon SNS topic can be defined within the assessment template, which will receive notification when a finding is ported and when an assessment starts, finishes or changes its state.
+
 ### Amazon GuardDuty
+
+Amazon GuardDuty analyses selected logs from AmazonVPC Flow Logs, AWS CloudTrail, DNS queries (those that are resolved within the VPC), Kubernetes Audit Logs and cryptocurrency attacks. Once analysed, suspicious events are reported as *findings*.
+
+Amazon GuardDuty does not require you to enable VPC Flow Logs, create a trail in AWS CloudTrail, or even configure an Amazon Route 53 zone, as it will automatically gather information from these services, without affecting the performance of your applications.
+
+Amazon GuardDuty’s analysis is based on threat intelligence information (such as IP addresses and domain-based lists) as well as machine learning models. Custom lists of *trusted IPs* and of malicious IPs (*threat lists)* can also be created.  Activity from IP addresses on a trusted IP list will not generate any findings.
+
+The basic entity in Amazon GuardDuty is called a *detector*, which consumes information and generates findings within a specific AWS account and region. Once a *detector* is enabled, Amazon GuardDuty starts reporting findings. A finding contains several attributes such as ID, time of the finding, severity, finding type, affected resources, and action details. The example image below, shows a Trojan that is trying to contact domains that are known to be bad actors.
+
+![AWS GuardDuty Finding](./aws-guard-duty-finding.png)
+
+Amazon GuardDuty also allows you to automatically export findings to an S3 bucket you own. Amazon GuardDuty will export *active* findings (findings matching suppressed rules will not be exported) within five minutes of its first occurrence. If an active finding receives recurrent events, you can configure how frequently those events are reported (every 15 minutes, every hour, or every six hours).
+
+Amazon GuardDuty adheres to the concept of a *master* account. The master account receives findings from other (*member*) accounts and has the capability to manage (enable, disable, or suspend) the detectors, manage the findings workflow (archive and create suppression rules), and configure threat lists for those member accounts
 
 ### AWS Security Hub
 
+AWS Security Hub is a service that consolidates security information about your AWS resources and presents it in a single pane. AWS Security Hub receive information from multiple AWS services, such as Amazon GuardDuty, Amazon Inspector, Amazon Macie, AWS Firewall Manager, and IAM Access Analyser, as well as third-party security products, or from your own applications.
+
+AWS Security Hub relies on the concept of *security standards* (i.e. best practises) when gathering information from the accounts. The service compares the current environment status with the security standards to establish a verdict of compliance for each of the security standards.
+
+Checks can be executed when a change is detected or scheduled - AWS Config must support the resource type in order for check to be performed when changes are detected, otherwise Security Hub will check no later than 12 hours after the last execution.
+
+AWS Security Hub also provides a process called a *workflow* to manage the findings, which describes a series of stages in which a finding can be positioned at any point in time. Each finding has a status, that can be one of: New, Notified, Suppressed, or Resolved. The workflow status can be modified at any time, allow for your own process to deal with the security findings.
+
+Along with findings, AWS Security Hub presents an additional view to consume the information via *insights*. Insights are filters and groupings that allow you to see affected resources in groups to facilitate the human analysis. 
+
+AWS Security Hub has a regional scope, so you need to enable it on every region where you want to use its capabilities. Additionally, the service adheres to the master-member concept, allowing other accounts to accept an invite to join the master account. The master can view findings from the member accounts, as well as election actions on those findings.
+
 ### AWS Systems Manager: State Manager, Patch Manager, and Compliance
+
+These three capabilities of AWS Systems Manager - State Manager, Patch Manager, and Compliance - are categorised under the group *instances & nodes* of the service.
+
+*State Manager* and *Patch Manager* capabilities work by specifying the desired state of a managed resource (by documenting a set of desired parameters) and constantly act to keep the fleet adhering to that state. 
+
+*Compliance* capability shows you the current adherence status both for State Manager and Patch Manager.
+
+State Manager establishes the instance’s desired state and the actions to bring the instance to that desired state. This information is included inside an SSM *document*, for example you can use an AWS SSM document to check if an antivirus is installed and updated. If the two conditions are fulfilled, the system is marked as compliant.
+
+Patch Manager is designed to keep instances and nodes in the desired state regarding OS and application patches. Patch Manager uses a *patching configuration* document that contains information about the desired state for patching a list of target instances. Additionally, Patch Manager can also be used to assess if the patches are up-to-date. 
+
+The SSM *Compliance* capability offers an overview of the status of the monitored instances according to the *patch* and *status* compliance definitions. So, with Patch Manager and State Manager, you define your desired state and constantly compare it with the current state of your monitored resources; with Compliance you have easy access to that information to quickly understand your current situation.
 
 ### AWS Trusted Advisor
 
+AWS Trusted Advisor provides a list of checks that compare your current account status with a set of good practices grouped under four categories: security, cost optimisation, reliability, and performance. Trusted Advisor will also monitor how close your are to reaching your account's service limits.
 
+Accounts that have a Business or Enterprise support plan will receive additional Trusted Advisor capabilities such as unrestricted access rules in security groups, to whether AWS IAM is enforcing a password policy
+
+AWS Trusted Advisor keeps a list of observations about how you can improve your environment, which can be viewed via the AWS Console.
 
 
 
