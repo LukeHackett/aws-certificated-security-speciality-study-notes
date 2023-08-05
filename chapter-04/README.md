@@ -276,8 +276,26 @@ AWS Trusted Advisor keeps a list of observations about how you can improve your 
 
 ## Stage 4: Action
 
+*Remediation* can be defined as acting on (or reacting to) an observation as a way of improving security posture. While the tools highlighted in this section are not strictly part of the AWS detective controls, they do offer a smooth association with remediation actions.
+
 ### AWS Systems Manager: Automation
+
+The AWS SSM automation capability makes use of the SSM *automation* documents, which describe a series of tasks to execute against a target list of resources. The AWS SSM automation capability runs these tasks on several resources at the same time.
 
 ### AWS Config Rules: Remediation
 
+When AWS Config Rule executes a check the service can link the execution to a remediation action, if the resource is reported as being non-compliant. As part of the Config Rule configuration, you can point to an SSM Automation action already defined in your account, along with any parameters required to execute the automation, and execution retires. Additionally you can configure that the remediation action is executed immediately, or keep it for on-demand triggering - useful if you wanted to execute such changes during a change window.
+
 ### Amazon EventBridge
+
+Amazon EventBridge delivers a stream of events representing changes to resources (usually within an AWS account, but it can also extend to external resources).
+
+Amazon EventBridge provides the option to set up event buses, that can be used to receive events from external sources (like SaaS partners or custom applications). Each event bus can be configured with rules to match a specific event, and forward it onto other services for processing, such as Lambda.
+
+The image below depicts the overflow of events through Amazon EventBridge. The process starts with the ingestion of events (i.e. changes in resources) into an event bus, which in turn can trigger actions as a response to selected events (you select the events defining a rule with a matching filter).
+
+![AWS EventBridge](./aws-event-bridge.png)
+
+***Note:** The default event bus automatically receives events from AWS resources, and is created automatically when your AWS account is setup. The default event bus can be used by custom applications and other AWS accounts, and it cannot be deleted it because it is part of the Amazon EventBridge infrastructure.*
+
+Other AWS services like Amazon GuardDuty and AWS Security Hub rely on Amazon EventBridge to provide access to their findings in a stream-like structure.
