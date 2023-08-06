@@ -226,7 +226,7 @@ Amazon GuardDuty analyses selected logs from AmazonVPC Flow Logs, AWS CloudTrail
 
 Amazon GuardDuty does not require you to enable VPC Flow Logs, create a trail in AWS CloudTrail, or even configure an Amazon Route 53 zone, as it will automatically gather information from these services, without affecting the performance of your applications.
 
-Amazon GuardDuty’s analysis is based on threat intelligence information (such as IP addresses and domain-based lists) as well as machine learning models. Custom lists of *trusted IPs* and of malicious IPs (*threat lists)* can also be created.  Activity from IP addresses on a trusted IP list will not generate any findings.
+Amazon GuardDuty’s analysis is based on threat intelligence information (such as IP addresses and domain-based lists) as well as machine learning models. Custom lists of *trusted IPs* and of malicious IPs (*threat lists)* can also be created. Activity from IP addresses on a trusted IP list will not generate any findings.
 
 The basic entity in Amazon GuardDuty is called a *detector*, which consumes information and generates findings within a specific AWS account and region. Once a *detector* is enabled, Amazon GuardDuty starts reporting findings. A finding contains several attributes such as ID, time of the finding, severity, finding type, affected resources, and action details. The example image below, shows a Trojan that is trying to contact domains that are known to be bad actors.
 
