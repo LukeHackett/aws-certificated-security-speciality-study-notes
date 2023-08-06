@@ -1,6 +1,8 @@
 {
     "recommendations": [
         "streetsidesoftware.code-spell-checker",
-        "bierner.markdown-preview-github-styles"
+        "bierner.markdown-preview-github-styles",
+        "github.vscode-github-actions",
+        "ms-vscode.makefile-tools"
     ]
 }
