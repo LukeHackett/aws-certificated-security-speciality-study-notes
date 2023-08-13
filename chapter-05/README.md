@@ -156,13 +156,56 @@ There are two types of VPC endpoints:
 
 ## VPC Flow Logs
 
+VPC *flow logs* enables the capturing of flow information (which includes IP addresses, transport protocol, and ports) about the traffic going to and from network interfaces in a VPC.
+
+A flow log can be created for a VPC, subnet or an individual network interface - logging for a VPC or subnet will monitor each network interface in that VPC or subnet. Flow logs can be sent to either Amazon Cloud Watch Logs or Amazon S3.
+
+Flow logs can be created for network interfaces that belong to AWS services (so long as they are deployed in a VPC you manage), for example Elastic Load Balancing, Amazon RDS, Amazon ElastiCache, Amazon Redshift, NAT gateways and transit gateways.
+
+When creating a flow log, the following parameters will be required:
+
+- **Filter** specifies which records are recorded, can be either All, Rejected Only or Accepted Only
+- **Maximum Aggregation Interval** specifies the time interval during which a flow of packets is captured and aggregated into a flow log record
+- **Destination** specifies where the logs are to be stored, can be either Amazon CloudWatch Logs or Amazon S3
+- **IAM Role** specifies the role that has the permission to publish the logs into the destination.
+
 
 
 ## AWS Web Application Firewall
+
+AWS Web Application Firewall (AWS WAF) protects your web applications and APIs from known IPv4 and IPv6 web attacks. You can create rules that block well-known attacks such as SQL injection and cross-site scripting, or specific traffic patterns that you can define.
+
+AWS WAF supports filtering any part of the web request, including IP addresses, HTTP headers, HTTP body, and request URI. In order to filter requests, a Web Access Control List (Web ACL) must be defined and associated to the AWS WAF.
+
+A Web ACL can contain your own rules or *managed rule groups*, which are pre-configured rules defined by AWS or AWS Marketplace sellers. Each group has a defined *capacity unit*, and a Web ACL has a limit of 1,500 capacity units.
+
+A custom rule can be created, and can be configured to match on any number of properties within the request, and can support additional transformations such as URL decoding, compressing white space or replacing HTML encoded entities. Each rule can be confirmed to Block, Allow or Count the request (in which case the matches would be counted).
+
+AWS WAF offers near real-time visibility into your web traffic, allowing you to create new alerts in Amazon CloudWatch.
 
 
 
 ## AWS Shield
 
+Distributed denial-of-service (DDoS) can be defined as cyberattacks in which many different compromised sources generate traffic intended to make a computer or network resource unavailable to its originally intended users.
 
+AWS *Shield* provides constant detections and automatic inline mitigations that minimise application downtime or performance degradation against DDoS attacks at two different levels: *AWS Shield Standard* and *AWS Shield Advanced*.
 
+### AWS Shield Standard
+
+AWS *Shield Standard* is a no-cost version that defends your environment against the most common Network (Layer 3) and Transport (Layer 4) known infrastructure attacks when you use Amazon CloudFront and Amazon Route 53. 
+
+It uses network flow monitoring, a combination of traffic signatures, anomaly algorithms, deterministic packet filtering, and priority-based traffic shaping to detect attacks. AWS Shield Standard is activated by default in all AWS accounts.
+
+### AWS Shield Advanced
+
+AWS *Shield Advanced* enables additional detection and mitigation against larger and more sophisticated DDoS attacks on Amazon EC2, Elastic Load Balancing, Amazon CloudFront, AWS Global Accelerator, and Amazon Route 53.
+
+AWS Shield Advanced provides the following distinct features:
+
+- **Near real-time visibility and reporting**  Layers 3 and 4 attack notifications and attack forensic reports are available, as well as Layer 3, 4, and 7 attack historical reports.
+- **Integration with AWS WAF** incidents can be responded to as they occur via customisable rules that you can deploy instantly in AWS WAF to quickly mitigate attacks.
+- **24/7 access to the AWS DDoS Response Team (DRT)** for manual mitigation of edge cases affecting your availability such as custom rules intended to mitigate application layer DDoS attacks in your environments.
+- **Cost protection** reimbursements will be applied to you account due to DDoS-related cost spikes relating to Amazon EC2, Elastic Load Balancing, Amazon Route 53, Amazon CloudFront, and AWS Global Accelerator.
+
+AWS Shield Advanced is not activated by default, and has an estimated cost of $3,000 per month (with a 12-month commitment).
