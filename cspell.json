@@ -15,6 +15,7 @@
         "DSS",
         "EIP",
         "EMR",
+        "FIPS",
         "ICFR",
         "JWT",
         "JWTs",
@@ -38,6 +39,7 @@
         "handlings",
         "opsitems",
         "presign",
+        "regionality",
         "routable"
     ]
 }
