@@ -5,19 +5,25 @@
     "words": [
         "ACK",
         "AICPA",
+        "ALB",
         "ARP",
         "BYOL",
+        "CLB",
         "CMK",
         "CRR",
         "CSF",
         "DSS",
+        "EIP",
         "EMR",
         "ICFR",
         "JWT",
         "JWTs",
+        "NACL",
+        "NACLs",
         "NGFWs",
+        "NLB",
         "OIDC",
-        "opsitems",
+        "PHD",
         "PII",
         "SCP",
         "SIEM",
@@ -30,7 +36,8 @@
         "arn",
         "ero",
         "handlings",
-        "PHD",
-        "presign"
+        "opsitems",
+        "presign",
+        "routable"
     ]
 }
