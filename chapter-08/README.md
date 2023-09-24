@@ -187,9 +187,27 @@ AWS IAM Access Analyzer helps with the task of finding human errors that expose 
 
 ## Aggregate and Resolve Issues with AWS Systems Manager
 
+AWS Systems Manager helps organisations to manage AWS resources at scale allowing a high degree of automation of security-related tasks such as patching, performing automated checks and running commands on multiple instances.
+
 ### AWS Systems Manager: OpsCenter
+
+AWS Systems Manager OpsCenter aggregates operational issues; provides tools for diagnosis, such as the personal health dashboard; and helps accelerate the resolution of issues by allowing the automation of tasks through SSM automations.
+
+Security related issues should not be centralised within OpsCenter, but should be centralised in AWS Security Hub. As a general rule, operation teams should be monitoring OpsCenter (to centralise and resolve operational issues) while security teams
+should be monitoring AWS Security Hub.
 
 ### AWS Systems Manager: State Manager
 
-### Automating Security Hygiene with AWSmSystems Manager
+AWS Systems Manager State Manager can help to correct drifts of configurations within application instances through associations. An association is a configuration that is assigned to your managed instances, specifying a desired state, that will be reapplied periodically.
 
+One common use case may to ensure that services are automatically restarted if the service were to go down, for example, the underlying EC2 instance may be running, but the application has crashed.
+
+Another use case of this service is to ensure that the anti-malware is running. If it’s not installed, State Manager will install it automatically, and if it’s not running, State Manager will start the service.
+
+### Automating Security Hygiene with AWS Systems Manager
+
+Manually managing Security hygiene at scale is often problematic. AWS Systems Manager can help you manage the security of resources at scale in three ways:
+
+- **Grouping** is creating groups of resources (such as grouping EC2 instances per application) to reflect an application stack or an environment.
+- **Improving Visibility** means centrally viewing patch compliance (using SSM Patch Manager) and operational issues (using SSM OpsCenter).
+- **Taking actions** is automating remediation actions on groups of resources using SSM automatons, for example SSM Session Manager can run scripts and commands Amazon EC2 instances with the Run command, while re-mediating vulnerabilities via patches can be completed using SSM Patch Manager.
