@@ -99,7 +99,7 @@ An SNS notification can be fired once the process has completed, to update the s
 
 AWS CloudTrail can detect changes to an AWS resource, and then trigger an Amazon CloudWatch events rule that executes an AWS Lambda function to automate security objectives.
 
-An example use of this may be to enforce encryption or versioning on a newly created S3 bucket, or to detect changes to security groups, that may trigger a remediation action (for example removing port 22 from a security group rule)
+An example use of this may be to enforce encryption or versioning on a newly created S3 bucket, or to detect changes to security groups, that may trigger a remediation action (for example removing port 22 that is open to the world from a security group rule)
 
 
 ![cloud-trail](./cloud-trail.png)
@@ -122,12 +122,12 @@ AWS WAF logs and application logs are stored on Amazon S3 and then analysed to d
 
 One of the common challenges of securing workloads in the cloud is to maintain consistency of certain configurations that apply to all your accounts or resources, such as ensuring S3 buckets are encrypted.
 
-AWS Config allows for these challenges to be overcome this challenge by performing various security-related tasks, such as:
+AWS Config allows for these challenges to be overcome by performing various security-related tasks, such as:
 
 - Maintaining an inventory of resources
 - Comparing the infrastructure and configuration changes from one day to another
 - Detecting compliance with a set of configuration rules, (via managed rules with common use cases or custom rules)
-- Remediating configuration drifts by executing Systems Manager automations
+- Re-mediating configuration drifts by executing Systems Manager automations
 
 AWS Config listens for resource change events, which are processed against it's list of enabled rules. If a non-compliance status is introduced, it can be automatically corrected using AWS Systems Manager Automation (as shown below).
 
