@@ -10,6 +10,7 @@
         "analyzer",
         "arn",
         "arp",
+        "awslogs",
         "byol",
         "clb",
         "clusterhsm",
@@ -38,12 +39,14 @@
         "regionality",
         "rdp",
         "routable",
+        "secondaries",
         "scp",
         "siem",
         "smurf",
         "stp",
         "sybex",
         "syn",
+        "tgw",
         "uba"
     ]
 }
