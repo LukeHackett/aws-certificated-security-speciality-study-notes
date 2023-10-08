@@ -17,12 +17,16 @@
         "cmk",
         "crr",
         "csf",
+        "dast",
         "dss",
+        "edr",
         "eip",
         "emr",
         "ero",
         "fips",
+        "gamedays",
         "handlings",
+        "iac",
         "icfr",
         "jwt",
         "jwts",
@@ -39,6 +43,8 @@
         "regionality",
         "rdp",
         "routable",
+        "runbooks",
+        "sast",
         "secondaries",
         "scp",
         "siem",
@@ -47,6 +53,7 @@
         "sybex",
         "syn",
         "tgw",
-        "uba"
+        "uba",
+        "ueba"
     ]
 }
