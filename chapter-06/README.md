@@ -287,9 +287,11 @@ You must select the right CMK used to decrypt the objects in the source bucket, 
 
 Amazon Macie is a security service that uses machine learning and artificial intelligence (ML/ AI) technology to discover, classify, and protect sensitive data in the AWS Cloud. 
 
-Amazon Macie will search S3 buckets to create an inventory of sensitive data, personally identifiable information (PII), or intellectual property while providing dashboards and alerts that show suspicious access and unusual data-related activity.
+Amazon Macie will search S3 buckets (only S3 Buckets) to create an inventory of sensitive data, personally identifiable information (PII), or intellectual property while providing dashboards and alerts that show suspicious access and unusual data-related activity.
 
-Additionally Amazon Macie will use CloudTrail Events to identify bad behaviours and to generate alerts.
+A number of data identifiers can be used to detect different types of data, such as credit card information. Predefined identifiers or customer identifiers (via a RegExp) can be configured within Macie, as well as Allow/Ignore lists.
+
+Additionally Amazon Macie will use CloudTrail Events to identify bad behaviours and to generate findings. Each finding is stored for 90 days, can be sent to Security Hub or EventBridge for further processing.
 
 ![macie-dashboard](./macie-dashboard.png)
 
@@ -300,6 +302,7 @@ The diagram above shows the S3 data inventory classification, and in the top-rig
 - **Silver:** IAM users or roles that have a history of issuing high numbers of medium-risk API calls, such as Describe* and List* operations, or read-only access requests to Amazon S3. 
 - **Bronze:** IAM users or roles that typically execute lower numbers of Describe* and List* API calls in the AWS environment.
 
+Macie supports AWS Organisations which allows for enabling sensitive data discovery across the entire organisation.
 
 ### AWS CloudTrail Events
 

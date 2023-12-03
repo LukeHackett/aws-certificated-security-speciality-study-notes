@@ -121,9 +121,51 @@ As a best practice, if any access key is leaked to a shared repository (like Git
 
 Additionally, accounts that have Business or Enterprise support can use the AWS Trusted Advisor Exposed Access Keys check to monitor popular code repositories and learn whether your access keys have been exposed to the public.
 
+#### Compromised AWS Credentials
+
+- Identify the compromised credentials using GuardDuty
+- Rotate the credentials
+- Apply a Deny Policy to the IAM User with a date condition to force existing sessions to expire, and cause a re-authentication.
+
+#### Compromised IAM Role
+
+- Identify the compromised role using GuardDuty
+- Apply a Deny Policy to the IAM Role with a date condition to force existing sessions to expire, and cause a re-authentication.
+- Disable the IAM User who was using the Role
+
+### AWS Account Compromised
+
+- Rotate all AWS Access Keys
+- Rotate all IAM User passwords
+- Remove all EC2 key pairs
+- Verify the AWS account information is correct
+
+
 ### Application Attacks
 
 AWS WAF can effectively address attacks and vulnerabilities, and it's possible that creating custom rules can help in providing a virtual patch to the vulnerability until the development team fix the issue in their code.
 
 If the type of attack you are receiving is a DDoS attack, the use of AWS Shield Advanced will protect you from Layer 7 attacks. Additionally, you will receive additional help from the AWS DDoS Response Team (DRT), as well as a refund of charges related to your infrastructure growth due to the DDoS attack
 
+### Unauthorised Amazon S3 Bucket Access
+
+When a user has managed to obtain access into an S3 bucket, you should consider performing the following best practices in your response plan:
+
+- Identify the bucket that was compromised using GuardDuty
+- Identify the source activity using CloudTrail or Amazon Detective
+- Identify if the requests were legitimate
+- Secure the bucket by applying the required bucket policies, access policies and/or the use of signed urls.
+
+### Amazon ECS Cluster
+
+- Identify using GuardDuty
+- Identify the service (either a container or a task)
+- Isolate the container, through the use of security groups
+- Evaluate the container for malicious activity (such as malware)
+
+### Amazon RDS Database
+
+- Identify the DB instance or DB user
+- Restrict network access via Security Groups, ACLs and restrict user access (by changing passwords)
+- Rotate **all** user passwords
+- Review the database audit logs, as this may help identify any leaked data

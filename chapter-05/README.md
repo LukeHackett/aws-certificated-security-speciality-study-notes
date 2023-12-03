@@ -169,6 +169,18 @@ When creating a flow log, the following parameters will be required:
 - **Destination** specifies where the logs are to be stored, can be either Amazon CloudWatch Logs or Amazon S3
 - **IAM Role** specifies the role that has the permission to publish the logs into the destination.
 
+*Note: traffic is not captured for Amazon DNS queries, Windows License Activations EC2 instance Metadata (i.e. 169.2354.169.254), DHCP traffic or mirrored traffic.*
+
+
+
+## VPC Network Analyzer
+
+Amazon VPC Network Access Analyzer helps you identify network configurations that lead to unintended network access.
+
+VPC Network Analyzer evaluates requirements against network resources within a VPC, and can be used to demonstrate compliance, for example proofing that here are not publicly accessible resources within a VPC.
+
+In order to utilise this, you will need to create a Network Access Scope JSON document, that defined certain conditions regarding your network security policy.
+
 
 
 ## AWS Web Application Firewall

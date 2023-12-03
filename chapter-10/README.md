@@ -96,3 +96,9 @@ Phase 3 promotes implementing security as code and security automation strategie
 - You can leverage AWS Serverless services to automate incident response processes, ensuring that the Cloud Operation, infrastructure, Security Operation, and DevSecOps teams are involved in it's development.
 
 - Prepare and train incident response processes in advance, by creating runbooks and playbooks, as well as considering executing gamedays and cyberattack simulations. Do not wait for a real incident to prepare your team.
+
+#### Penetration Testing
+
+AWS permits penetration testing against * services including EC", NAT Gateways, ELB, RDS, Aurora and API Gateway. No additional authorisation is required.
+
+AWS does not allow DDoS attacks, port flooding attacks against it's services. For all other testing scenarios, you should contact AWS in order to obtain the correct authorisation.

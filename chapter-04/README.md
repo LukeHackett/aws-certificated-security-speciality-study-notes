@@ -112,9 +112,9 @@ Each event contains a number of fields and metadata, and provides information ab
 
 CloudTrail also provides the extended functionality of giving awareness on the events, looking for an abnormally high volume of API calls or unusual activity. This functionality is called *Insights* and is available via the AWS Management Console.
 
-Insights are recorded for 90 days, and each event allows for the viewing of the details of the unusual activity, or to view the events as a time series graph.
+Insights are recorded for 90 days, and each event allows for the viewing of the details of the unusual activity, or to view the events as a time series graph. If insights are required for longer than 90 days, the data should be exported to an S3 bucket.
 
-Storing events for longer than 90 days is possible by configuring a *trail.* A *trail* allows you to store CloudTrail events in an Amazon S3 bucket that you own, in the form of *log files*. 
+Storing events for longer than 90 days is possible by configuring a *trail.* A *trail* allows you to store CloudTrail events in an Amazon S3 bucket that you own, in the form of *log files*.  A Trail can be enabled on a per-region basis, or for all regions.
 
 Each log file is compressed (in gzip format) and contains one or more JSON-formatted records where each record represents an event. CloudTrail delivers log files several times an hour (about every 5 minutes). Typically the log files for management and data events appear in your S3 bucket within 15 minutes after the activity was executed in the account. Insight events typically appear within 30 minutes after detecting the unusual activity.
 
@@ -129,6 +129,15 @@ CloudTrail also embeds a trail *integrity validation* mechanism. This mechanism 
 CloudTrail is a regional scoped service, but can be configured to obtain events from different regions in a single trail - known as a multi-region trail. When creating a new trail, you define its scope by choosing the regions the trail covers (options are Current Region or All Regions). All regional logs will be delivered to a single Amazon S3 bucket under a prefix that identified the region they come from. 
 
 Additionally, a trail can also have an *organisations* scope, which will log events from all accounts under the master account.
+
+**Exam Tip:** If a resource has been delete in AWS, investigate using CloudTrail first, as it will be able to provide the details as to who has performed the operation.
+
+#### AWS CloudTrail Insights
+
+AWS CloudTrail Insights helps AWS users identify and respond to unusual activity associated with API calls and API error rates by continuously analysing CloudTrail management events. Examples include monitoring for busts of AWS IAM actions and hitting services limits.
+
+Write events are analysed to detect unusual patterns of behaviour. Anomalies appear in the AWS Console, Amazon S3 or can be sent to EventBridge for further processing.
+
 
 ### Amazon CloudWatch Logs
 
@@ -176,6 +185,25 @@ AWS Health provides you with information about issues, notifications, or schedul
 
 The *Personal Health Dashboard* (PHD) highlights the most recent issues and notifications, along with upcoming changes. An *event log*  is also provided which lists the events reported within the past 90 days. The event log API is only available for accounts that have subscribed to business or enterprise support plans.
 
+### VPC Flow Logs
+
+VPC Flow Logs enables you to capture information about the IP traffic going to and from network interfaces in your VPC. Flow log data can be published to Amazon CloudWatch Logs, Amazon S3, or Amazon Kinesis Data Firehose.
+
+### ELB Access Logs
+
+Elastic Load Balancing provides access logs that capture detailed information about requests sent to your load balancer. Each log contains information such as the time the request was received, the client's IP address, latencies, request paths, and server responses. 
+
+Access logs are disabled by default when using Elastic Load Balancing. Access logging can be enabled at any time, in which logs are delivered to an S3 bucket.
+
+### CloudFront Logs
+
+CloudFront can deliver access logs into an Amazon S3 bucket that can can then be analysed by Amazon Athena.
+
+### WAF Logs
+
+WAF LOgs can be enabled tp obtain information about the time that AWS WAF received a web request from your AWS resource, detailed information about the request, and details about the rules that the request matched. 
+
+You can send your logs to an Amazon CloudWatch Logs log group, an Amazon S3 bucket, or an Amazon Kinesis Data Firehose.
 
 
 ## Stage 3: Events Analysis
@@ -220,6 +248,10 @@ An *assessment template* defines which rule packages run on which assessment tar
 
 For each assessment run, you can generate a documented report (in either PDF or HTML format) with findings information. Additionally, an Amazon SNS topic can be defined within the assessment template, which will receive notification when a finding is ported and when an assessment starts, finishes or changes its state.
 
+Additionally, scans are run on ECR registries as well as Lambda functions are analysed for software vulnerabilities.
+
+All reported findings are sent to Security Hub (or Event Bridge).
+
 ### Amazon GuardDuty
 
 Amazon GuardDuty analyses selected logs from AmazonVPC Flow Logs, AWS CloudTrail, DNS queries (those that are resolved within the VPC), Kubernetes Audit Logs and cryptocurrency attacks. Once analysed, suspicious events are reported as *findings*.
@@ -234,11 +266,15 @@ The basic entity in Amazon GuardDuty is called a *detector*, which consumes info
 
 Amazon GuardDuty also allows you to automatically export findings to an S3 bucket you own. Amazon GuardDuty will export *active* findings (findings matching suppressed rules will not be exported) within five minutes of its first occurrence. If an active finding receives recurrent events, you can configure how frequently those events are reported (every 15 minutes, every hour, or every six hours).
 
-Amazon GuardDuty adheres to the concept of a *master* account. The master account receives findings from other (*member*) accounts and has the capability to manage (enable, disable, or suspend) the detectors, manage the findings workflow (archive and create suppression rules), and configure threat lists for those member accounts
+Amazon GuardDuty adheres to the concept of a *master* account. The master account receives findings from other (*member*) accounts and has the capability to manage (enable, disable, or suspend) the detectors, manage the findings workflow (archive and create suppression rules), and configure threat lists for those member accounts. Additionally, GuardDuty supports AWS Organisation, allowing for it to be enabled as part of a multi-account strategy.
+
+**Exam Tip:** GuardDuty is the only AWS Service that can help to prevent Cryptocurrency attacks.
+
+**Exam Tip:** If GuardDuty is active but is not producing any DNS-based findings, then it is likely because the default DNS resolver is not being used.
 
 ### AWS Security Hub
 
-AWS Security Hub is a service that consolidates security information about your AWS resources and presents it in a single pane. AWS Security Hub receive information from multiple AWS services, such as Amazon GuardDuty, Amazon Inspector, Amazon Macie, AWS Firewall Manager, and IAM Access Analyser, as well as third-party security products, or from your own applications.
+AWS Security Hub is a service that consolidates security information about your AWS resources and presents it in a single pane. AWS Security Hub receive information from multiple AWS services, such as Amazon GuardDuty, Amazon Inspector, Amazon Macie, AWS Firewall Manager, and IAM Access Analyser, as well as third-party security products, or from your own applications. *Note: you must enable AWS Config of this service to work!*
 
 AWS Security Hub relies on the concept of *security standards* (i.e. best practises) when gathering information from the accounts. The service compares the current environment status with the security standards to establish a verdict of compliance for each of the security standards.
 
@@ -249,6 +285,16 @@ AWS Security Hub also provides a process called a *workflow* to manage the findi
 Along with findings, AWS Security Hub presents an additional view to consume the information via *insights*. Insights are filters and groupings that allow you to see affected resources in groups to facilitate the human analysis. 
 
 AWS Security Hub has a regional scope, so you need to enable it on every region where you want to use its capabilities. Additionally, the service adheres to the master-member concept, allowing other accounts to accept an invite to join the master account. The master can view findings from the member accounts, as well as election actions on those findings.
+
+GuardDuty can send findings into Security Hub, and will be automatically converted into a Security Hub Finding. Audit Manager and Amazon Detective can also receive data from Security Hub.
+
+Security Hub can forward it's findings on to EventBridge, for further automated processing using other AWS Services and/or 3rd party solutions.
+
+### Amazon Detective
+
+Amazon Detective enables you to investigate, analyse, and identify root causes of security issues or suspicious activities in your AWS environments. Amazon. Detective does this through the automatic collection of log data from AWS resources such as VPC flow logs, AWS CloudTrail, and Amazon GuardDuty.
+
+**Exam Tip:** Amazon Detective can detect if Cloud Logging was disabled and by using ML, it can detect which systems may have been compromised. 
 
 ### AWS Systems Manager: State Manager, Patch Manager, and Compliance
 
