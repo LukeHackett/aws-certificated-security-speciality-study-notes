@@ -87,7 +87,6 @@ Access to the master key can only be achieved via the AWS Console, CLI or SDKs, 
 
 ![accessing-master-key](./accessing-master-key.png)
 
-
 #### Customer Master Keys
 
 A customer master key (CMK) is a 256-bit AES for symmetric keys that has a unique key ID, alias, and ARN (Amazon Resource Name) and is created based on a user-initiated request through AWS KMS. 
@@ -149,13 +148,115 @@ AWS KMS enforces a minimum of 7 days and a maximum of 30 days (default configura
 
 When a CMK is set to pending deletion or disabled, the CMK cannot be used, nor rotated. Additionally AWS KMS does not rotate other derived keys from a pending deletion or disabled CMK.
 
+When deleting a multi-region key, you will need to delete all the replica keys first, and then delete the primary key. If you want to delete the primary key, you should first promote a replicate to become primary, and then schedule the deletion of the old primary key.
+
 #### Rotating Keys
 
 You can use the AWS Console or CLI to enable and disable automatic key rotation, as well as view the rotation status of any CMK. When you enable automatic key rotation, AWS KMS automatically and transparently rotates the CMK every 365 days after the enable date.
 
-When an S3 bucket is using KMS keys to protect data, KMS manages the entire rotation process, keeping the previous cryptographic material used to generated data encryption keys. After rotating a CMK, new objects will be encrypted using the new key, while older objects will be decrypted using the older keys.
+When an S3 bucket is using KMS keys to protect data, KMS manages the entire rotation process, keeping the previous cryptographic material used to generated data encryption keys. After rotating a CMK, new objects will be encrypted using the new key, while older objects will be decrypted using the older keys. The new Key will retain the old CMK Id, and will contain the new key material.
 
-Manual key rotation may be needed because of rotation schedule or if you have brought your own keys into KMS.
+Manual key rotation may be needed because of rotation schedule or if you have brought your own keys into KMS. When rotating manually, you will have a new CMK ID, so you will need to use aliases if you do not want to update your applications. You should also keep the old keep otherwise, you will not be able to decrypt the old data.
+
+#### Multi-Region Keys
+
+Keys can be replicated t different regions, and will have the same key maternal, and key id. However they will reside in different physical locations, and therefore will have a different ARN,
+
+The main advantage is that it allows for data to be encrypted and decrypted in different regions using the same key material. Example usages cases include DynamoDB Global Tables, Active-Active setups or distributed signing applications.
+
+
+### KMS Envelope Encryption
+
+The KMS Encrypt API is limited to 4Kb, for larger data sets you need to use the Envelope Encryption API.
+
+You need to use the GenerateDataKey API to generate a unique symmetric data key (DEK). The DEK that is returned from this call should be used to encrypt the data (or file) locally. 
+
+![Generate Data Key](./envelop-encryption-datakey.png)
+
+To decrypt the data, you will need to send the encrypted data along with the encrypted DEK key (in an envelope) to KMS, which will return you a plaintext DEK file. The plaintext DEK file can then be used to decrypt the data locally.
+
+![Decrypt using Data Key](./envelop-encryption-decrypt.png)
+
+#### Data Key Caching
+
+It is possible to re-use the same data keys for multiple operations, which can help reduce the number of calls into KMS, and thus reduce costs. However the trade off is a reduction in security, as the same key is being used multiple times.
+
+
+### KMS Key Policies
+
+AWS provides a default key policy that allows all users access to a key (assuming the user has the appropriate IAM policy to use the key). It is possible to apply a custom policy if required.
+
+AWS Managed key can be viewed, but no custom policies can be applied, where as CMKs can have customer policies applied.
+
+Key policies can grant IAM users or roles to perform actions against it, as well as using the default policy + IAM permissions for the given user/role.
+
+```json5
+{
+    "Id": "key-policy",
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Enable IAM User Permissions",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::111122223333:root"
+            },
+            "Action": "kms:*",
+            "Resource": "*"
+        },
+        {
+            "Sid": "Allow access for Key Administrators",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::111122223333:role/AdminRole"
+            },
+            "Action": [
+                "kms:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "Allow use of the key",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::111122223333:role/UserRole"
+            },
+            "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+#### Key Policy Evaluation Process
+
+```mermaid
+flowchart LR
+    Deny[Is there a Deny] --> |No| SCP
+    SCP[SCP Deny?] --> |No| VPC
+    VPC[VPC Endpoint Policy Deny?] --> |No| Key
+    Key[Key Policy Deny?] --> |No| Grant
+    Grant[Grant Policy Deny?] --> |No| IAM
+    IAM[IAM Policy Deny? ] --> |No| ALLOW
+```
+
+### KMS Key Grants
+
+A key Grant allows you to grant access to specific KMS keys for other IAM User or Roles in your AWS account as well as other AWS Accounts. It is often used to provide temporary access to a key (can only be used for one key only).
+
+It allows the principal to perform any operation that is specified within the grant. Key Grants do not expire automatically, and must be delete manually.
+
+KMS Grants cannot be created from within the Console, but can be created via the AWS CLI or AWS SDK.
+
+One of the main advantages of Key grants is that KMS Key Policies or IAM Policies do not need to be changed.
+
+KMS Key Grants are often used by a service, to grant access to a KMS for for a given operation, for example EBS will create a Key Grant to encrypt/decrypt data to/from an EBS volume, and will remove the key grant when complete.
 
 ### Protecting RDS with KMS
 
@@ -175,8 +276,26 @@ Manual key rotation may be needed because of rotation schedule or if you have br
 - Without encryption by default enabled, a restored volume of an unencrypted snapshot is unencrypted by default.
 - When the CreateVolume action operates on an encrypted snapshot, you have the option of encrypting it again with a different CMK. 
 - The ability to encrypt a snapshot while copying lets you apply a new CMK to an already encrypted snapshot belonging to you. Restored volumes from the resulting copy are only accessible using the new CMK
+- You can't change keys used by an EBS volume, instead you have to create a snapshot, which will be encrypted with the original key, and create a new volume using the new key.
+- Sharing EBS snapshots between accounts requires the snapshot to be decrypted first, then encrypted in the 2nd account
+- EBS encryption can be enabled by default at the account level - this is disabled by default
 
+### Protecting EFS with KMS
 
+- You cannot encrypt an existing EFS, so you must create a new EFS that is encrypted.
+- The files will need to be migrated to the new encrypted EFS using AWS DataSync
+- Applications will need to to point to the new EFS instance when the data has been copied across
+
+### Using ABAC with KMS
+
+- You can control access to KMS keys based upon the tags and aliases values
+- IAM policies should make use of the `aws:ResourceTag` condition
+
+### Using Parameter Store with KMS
+
+- SSM Parameter Store Secure String values are encrypted/decrypted using a KMS key.
+- Standard values (supports for to 4KB) use the KMS Key directly; Advanced (supports up to 8kb of data) uses the envelop method
+- SSM Parameter Store only support symmetric keys, and you need to have permissions to access both the KMS Key and the Parameter in SSM Parameter Store 
 
 ## Understanding the Cloud Hardware Security Module
 
@@ -186,7 +305,7 @@ AWS CloudHSM is a managed service that automates administration tasks such as ha
 
 Generally, the use of an HSM Cloud is directly related to meeting regulatory needs, such as FIPS 140-2 Level 3 standards. To create an HSM cluster in the AWS Console, you must configure the VPC, subnets, and their availability zones where cluster members will be provisioned
 
-Once you have created a cluster, you need to kickstart it by validating the HSM certificate chains, verifying the identity of your cluster, and then importing the signed cluster certificate and your issuing certificate. The diagram below illustrates the CloudHSM certificate hierarchy.
+Once you have created a cluster, you need to kickstart it by validating the HSM certificate chains, verifying the identity of your cluster, and then importing the signed cluster certificate and your issuing certificate. The diagram below illustrates the CloudHSM certificate hierarchy. Once setup, you can use CloudHSM to generate keys in a secure environment.
 
 ![cloudhsm-certificate-hierarchy](./cloudhsm-certificate-hierarchy.png)
 
@@ -201,6 +320,12 @@ Each of the certificates are outlined below:
 
 Once the Cluster HSM (a collection of individual HSMs) is configured, the client can access the service through network interfaces and security group configurations directly from their VPC.
 
+Each cluster is spread across multi-AZ, and provides a highly available service.
+
+The CloudHSM Client is used to manage all the keys - if you loose the keys, AWS is unable to help or recover them.
+
+Sharing CloudHSM across AWS accounts can only be achieved by sharing the private subnets that CloudHSM reside in (via AWS RAM) - it is not possible to share the CloudHSM cluster itself.
+
 ![clusterhsm-architecture](./clusterhsm-architecture.png)
 
 *Note: Applications in the Customer VPC must use an ENI to access CloudHMS and keys provisioned in the service VPC.*
@@ -209,7 +334,7 @@ Once the Cluster HSM (a collection of individual HSMs) is configured, the client
 
 AWS CloudHSM can integrate with the AWS KMS service, allowing for the CloudHSM cluster to protect the customer master keys (CMKs) and thus the data keys and data in the most diverse AWS cloud services.
 
-When you are using your own key store using AWS CloudHSMs that you control, KMS generates and stores the Key material for the CMK inside the CloudHSM cluster that you own and manage -i.e. the cryptographic operations under that Key are performed by your CloudHSM cluster.
+When you are using your own key store using AWS CloudHSMs that you control, KMS generates and stores the Key material for the CMK inside the CloudHSM cluster that you own and manage - i.e. the cryptographic operations under that Key are performed by your CloudHSM cluster.
 
 The main scenarios in which you'd want to use your own CloudHSM are:
 
@@ -217,10 +342,13 @@ The main scenarios in which you'd want to use your own CloudHSM are:
 - You must store keys using an HSM validated at FIPS 140-2 Level 3 overall (the HSMs used in the default KMS key store are validated to Level 2).
 - You have keys that are required to be auditable independently of KMS
 
+CloudHSM can be used to generate hashes, where as KMS does not provide this functionality. 
+
 ### SSL Offload Using CloudHSM
 
 You can use AWS CloudHSM to offload SSL encryption and decryption of traffic to your servers or instances, improving private key protection, reducing performance impact into your application, and raising your application security when using AWS Cloud.
 
+Additionally, you can use CloudHSM to use along side the Microsoft Signing tool and the Java Signing tool.
 
 
 ## AWS Certificate Manager
@@ -254,6 +382,7 @@ Amazon S3 supports the following encryption configurations:
 - **SSE-S3:** Server-side encryption with Amazon S3–managed keys 
 - **SSE-KMS:** Server-side encryption with KMS customer-managed master keys 
 - **SSE-C:** Server-side encryption with customer-provided encryption keys
+- **Client Side:** Client-side encryption that is performed by the customer before uploading to S3
 
 #### SSE-S3 Encryption
 
@@ -265,7 +394,22 @@ SSE-KMS is the encryption functionality of the S3 service that uses encryption k
 
 Objects inserted in the bucket after this configuration is performed will be encrypted even if no encryption option is specified in the request
 
+One unnoticed advantage is that you can audit key usage when using SSE-KMS, as you can view the KMS requests vis CloudTrial
+
 It is also important to know that an extra cost might incur in this configuration, as additional requests are being made to the AWS KMS service.
+
+Objects encrypted using the SSE-KMS method can never be read by anonymous users, as these users would need access to KMS to decrypt the data - likewise uploading new files anonymously is not supported either.
+
+##### Uploading Large files with KMS
+
+When uploading a large file to S3, you must use a multipart upload. The requester must ask have permissions:
+
+- `kms:GenerateKey` allows you to encrypt each object part with a unique data key
+- `kms:Decrypt`- decrypt the object parts before the can be assembled in to large file, and then encrypt the entire file as one
+
+AWS will stitch the file back together, and use these permissions to encrypt the file.
+
+**Note: this is a typical exam question.**
 
 #### SSE-C Encryption
 
@@ -273,14 +417,91 @@ Using SSE-C, you can set your own encryption keys, which you must provide as par
 
 The customer is in charge of managing the keys provided in each request, and only the data is encrypted and not the object’s metadata. When you upload an object, Amazon S3 uses the provided encryption key to apply AES256 encryption to the data and deletes the encryption key from memory, thus not storing the encryption key you provided.
 
+When writing data into S3 using SSE-C, you must use the HTTPS endpoints - HTTP is not supported.
+
 *Note: If the customer loses the encryption key, the stored object data is also lost.*
 
-#### SSE-KMS Encrypted Objects Replication
+#### Client Side Encryption
+
+Client-side encryption that is performed by the customer before uploading to S3. AWS provides the Amazon S3 Client Side Encryption Library to handle this logic (although the customer needs to provide their keys and use this library within the application).
+
+### S3 Secure Transport
+
+When writing data into S3 using SSE-C, you must use the HTTPS endpoints - HTTP is not supported.
+
+To force the use of HTTPS, you can apply the `aws:SecureTransport: true` condition upon the bucket's policy,
+
+To force encryption, via bucket policies, you can make use of the `s3:x-amz-server-side-encryption: aws:kms` on the pubObject action.
+
+*Note:* Bucket Policies are evaluated before default encryption settings.*
+
+### SSE-KMS Encrypted Objects Replication
 
 By default, Amazon S3 doesn’t replicate objects that are stored using SSE-KMS. You must modify the bucket replication configuration to tell Amazon S3 to replicate these objects using the right KMS keys.
 
 You must select the right CMK used to decrypt the objects in the source bucket, and then define the destination bucket with the destination key to encrypt the objects
 
+### S3 Bucket Key
+
+Amazon S3 Bucket Keys reduce the cost of Amazon S3 server-side encryption with AWS Key Management Service (AWS KMS) keys (SSE-KMS). Using a bucket-level key for SSE-KMS can reduce AWS KMS request costs by decreasing the request traffic from Amazon S3 to AWS KMS. 
+
+When you configure your bucket to use an S3 Bucket Key for SSE-KMS, AWS generates a short-lived bucket-level key from AWS KMS then temporarily keeps it in S3. This bucket-level key will create data keys for new objects during its lifecycle. 
+
+S3 Bucket Keys are used for a limited time period within Amazon S3, reducing the need for S3 to make requests to AWS KMS to complete encryption operations. This reduces traffic from S3 to AWS KMS, allowing you to access AWS KMS-encrypted objects in Amazon S3 at a fraction of the previous cost.
+
+![S3 Bucket Key](./s3-bucket-keys.png)
+
+Bucket keys are enabled by default when using KMS or S3 provided keys.
+
+*Note: when enabled you will see fewer events in CloudTrail.*
+
+### S3 Object Lock
+
+S3 Object Lock can help prevent Amazon S3 objects from being deleted or overwritten for a fixed amount of time or indefinitely. Object Lock uses a write-once-read-many (WORM) model to store objects
+
+To utilise S3 object lock you must enabled versioning, as the lock policies are assigned on an object-level (rather than a bucket level).
+
+Before applying an object lock, you will need to choose a retention mode:
+
+- **Compliance:** Objects versions cannot be overwritten or deleted by any user including the root user. The retention modes for objects cannot not be changed, and retention periods cannot be shortened. This is the most strict retention mode.
+- **Governance:**  Most users will not be able to overwrite or delete an object version, but some users have special permissions to change the retention or delete the object.
+
+Object Lock provides two ways to manage object retention:
+
+- **Retention period:** A retention period specifies a fixed period of time during which an object remains locked. You can set a default retention period on an S3 bucket. You can also set a unique retention period for individual objects. 
+- **Legal hold:** A legal hold provides the same protection as a retention period, but it has no expiration date. Instead, a legal hold remains in place until you explicitly remove it. Legal holds are independent from retention periods and are placed on individual objects.
+
+An object version can have a retention period, a legal hold, or both.
+
+### S3 Glacier
+
+Amazon S3 Glacier is an online file storage web service that provides storage for data archiving and backup
+
+#### Glacier Vault Access Policy
+
+An Amazon S3 Glacier vault access policy is a resource-based policy that you can use to manage permissions to your vault.
+
+You can create one vault access policy for each vault to manage permissions, and you can modify permissions in a vault access policy at any time.
+
+#### Glacier Vault Lock Policy
+
+S3 Glacier Vault Lock helps you to easily deploy and enforce compliance controls for individual S3 Glacier vaults with a Vault Lock policy. You can specify controls such as "write once read many" (WORM) in a Vault Lock policy and lock the policy from future edits.
+
+You must create a Vault Lock policy, and then lock the policy. Once the policy has been locked, it can no longer be modified. The main advantage of using a Vault Lock policy is to ensure that archival data cannot be changed or deleted in the future, thus helps for compliance and data retention
+
+An example of a vault lock policy might be to forbid deleting an archive if less than 1 year old.
+
+The process for locking a vault is shown below.
+
+![Vault Lock Process](./vault-lock-process.png)
+
+#### Glacier Vault Policies
+
+Each Glacier Vault has one vault access policy and one vault lock policy. Both policies are written in JSON.
+
+Vault Access Policy is akin to a bucket policy, and is used to restrict access to the data.
+
+Vault Lock Policy is a policy that you lock for regulatory and compliance requirements - once the policy has been locked, it can never change changed.
 
 
 ## Amazon Macie

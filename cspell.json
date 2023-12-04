@@ -3,10 +3,12 @@
     "language": "en-GB",
     "minWordLength": 3,
     "words": [
+        "abac",
         "ack",
         "acp",
         "aicpa",
         "alb",
+        "amz",
         "analyzer",
         "arn",
         "arp",
@@ -19,6 +21,7 @@
         "crr",
         "csf",
         "dast",
+        "dek",
         "dss",
         "ecmp",
         "edr",
@@ -45,6 +48,7 @@
         "pii",
         "presign",
         "playbooks",
+        "rbac",
         "regionality",
         "rdp",
         "routable",
@@ -59,6 +63,7 @@
         "syn",
         "tgw",
         "uba",
-        "ueba"
+        "ueba",
+        "yubi"
     ]
 }
