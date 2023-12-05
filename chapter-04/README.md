@@ -72,6 +72,14 @@ Additionally, AWS Config can also be provided in a stream, which means being not
 
 The main goal of AWS Config is to record configuration and changes of the resources and not analyze them. In other words, AWS Config does not judge if a change is good or bad or if it needs to execute an action. Relating to the Detective Framework, AWS Config spans across Stages 1 and 2.
 
+#### Aggregators
+
+An aggregator will pull AWS Config data from multiple account, and show an aggregated view within the aggregator account. 
+
+AWS Config Aggregator will aggregate rules, resources across multiple accounts and regions. If using AWS Organisation it can be configured automatically, without the need to manually link accounts.
+
+Aggregators do not deploy updates into AWS Config rule, it only retrieves the data - to do this, you will need to use AWS CloudFormation Stack sets.
+
 ### AWS Systems Manager
 
 AWS Systems Manager (also know as AWS SSM) is a comprehensive service that helps with the administration of large fleets of instances that can be  Amazon EC2 instances, on-premises servers, or even instances running in other cloud providers.
@@ -212,7 +220,9 @@ After collecting the events, the next step is to analyse them in order to produc
 
 ### AWS Config Rules
 
-AWS Config tracks configuration items of your monitored resources, and is notified when a change happens. This notification allows the service to establish if the change leaves the resource in a compliant or non-compliant state. Deducing if a resource is compliant is accomplished by one or more AWS Config rules. 
+AWS Config tracks configuration items of your monitored resources, and is notified when a change happens. This notification allows the service to establish if the change leaves the resource in a compliant or non-compliant state. 
+
+Deducing if a resource is compliant is accomplished by one or more AWS Config rules. 
 
 There are three types of AWS Config rules:
 
@@ -235,6 +245,8 @@ AWS Config provides a *compliant timeline* that shows the compliance status of a
 ![AWS Config - Compliance Timeline](./aws-config-compliance-timeline.png)
 
 AWS Config is able to delivery notifications of when a rule is applied to a resource and when the compliance status of a resource changes if there has been a defined Amazon SNS topic.
+
+AWS Config is a region service, but can aggregate data across regions and accounts if configured.
 
 ### Amazon Inspector
 
@@ -331,6 +343,12 @@ The AWS SSM automation capability makes use of the SSM *automation* documents, w
 ### AWS Config Rules: Remediation
 
 When AWS Config Rule executes a check the service can link the execution to a remediation action, if the resource is reported as being non-compliant. As part of the Config Rule configuration, you can point to an SSM Automation action already defined in your account, along with any parameters required to execute the automation, and execution retires. Additionally you can configure that the remediation action is executed immediately, or keep it for on-demand triggering - useful if you wanted to execute such changes during a change window.
+
+There are over 150 AWS Managed Config rule that can be used, or alternatively, you can create custom remediation actions using AWS Lambda Functions. 
+
+Additionally AWS Config can execute an SSM document as part of it's remediation, for example AWS Config can monitor if any of the AWS account's IAM Access keys have expired, and if so, the SSM Document `AWSConfigRemediation-RevokeUnusedIAMUserCredentials` could be executed, which would disable the expired credentials.
+
+An SNS topic can be configured against AWS Config Rules to forward event to an Admin to review if a resource is no long compliant.
 
 ### Amazon EventBridge
 

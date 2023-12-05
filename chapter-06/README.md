@@ -359,7 +359,15 @@ The AWS Certificate Manager service allows for SSL certificates to be requested 
 
 The service can also be used for internal digital certificate generation, functioning as an internal CA (certificate authority). 
 
-ACM has no costs when used within the AWS-native environment and resources. However, when using it as an internal certificate authority for on-premises environments, it has a monthly cost
+ACM has no costs when used within the AWS-native environment and resources. However, when using it as an internal certificate authority for on-premises environments, it has a monthly cost/
+
+ACM can automatically generate certificates for domains that you own, to which you will need to provide proof of ownership via email notification or via DNS Domain Validation. When generating private certificates, you do not need to verify you are the owner of the domain.
+
+ACM will send notifications about renewals, 45 days before expiration. Renewed certificates will keep the same AWS ARN. Certificates that have been imported, will need to be updated manually - ACM will still send notifications 45 days before expiration.
+
+AWS Config has a managed rule that can be enable to check for expiring certificates.
+
+
 
 
 
@@ -473,6 +481,34 @@ Object Lock provides two ways to manage object retention:
 
 An object version can have a retention period, a legal hold, or both.
 
+### Lifecycle Rules
+
+To manage your objects so that they are stored cost effectively throughout their lifecycle, you can setup Amazon S3 Lifecycle Rules. Each rule allows you to define a set of actions that Amazon S3 applies to a group of objects. 
+
+There are two types of actions:
+
+- **Transition actions:** allow you to transition data between different storage classes, such as moving data to glacier after 6 months.
+
+- **Expiration actions:** allow you to expire (delete) objects after a period of time, e.g. access log files to be removed after 1 year
+
+To help you decided when to transition objects, you can utilise the S3 Analytics functionality, which produces a css file of objects and their recommended transition action. S3 Analytics only  make recommendations for Standard and Standard IA - One-Zone or Glacier is not supported.
+
+### Replication
+
+Replication enables automatic, asynchronous copying of objects across Amazon S3 buckets. Data copying is performed in an asynchronous manner, meaning that there may be a delay in replicating data.
+
+In order to replicate objects, you must enable object versioning in both the source and destination buckets, this is because delete markers are replaced, but deletions are not replicated to avoid malicious deletes. Additionally the correct permissions to replicate objects from the source to the destination bucket must be assigned.
+
+Only new objects are replicated after turning on replication - existing objects can be replicated using the S3 Batch replication job provided by Amazon S3.
+
+There are two types replication strategies:
+
+- **Cross-Region Replication:** is used to copy objects across Amazon S3 buckets in *different* AWS Regions, and can help you need compliance requirements, minimise latency and increase operational efficiency
+- **Same-Region Replication:**  is used to copy objects across Amazon S3 buckets in the *same* AWS Regions, and can help you aggregate logs into a single bucket, replicate data between production and test accounts, adhere to data sovereignty laws such as storing multiple copies of your data within the same region
+
+*Note: chaining of replication is not supported.*
+
+
 ### S3 Glacier
 
 Amazon S3 Glacier is an online file storage web service that provides storage for data archiving and backup
@@ -504,6 +540,53 @@ Vault Access Policy is akin to a bucket policy, and is used to restrict access t
 Vault Lock Policy is a policy that you lock for regulatory and compliance requirements - once the policy has been locked, it can never change changed.
 
 
+
+## AWS Backup
+
+AWS Backup is a fully managed backup service that automates the backup of data across multiple AWS services, helping you achieve your disaster recovery and compliance requirements.
+
+AWS Backup supports the following services (and more are being added):
+
+- Amazon EC2, Amazon EBS, 
+- Amazon S3, EFS/FSx, Storage Gateway
+- RDS, Aurora, DocumentDB, DynamoDB
+
+AWS Backup can be configured to store backups in different regions or different accounts. AWS Backup also supports point-in-time recovery do services that support this feature, such as DynamoDB.
+
+You will need to create a backup plan that contains details such as:
+
+- The frequency at which the back is to be ran, such as hourly, daily, monthly
+- The window in which the backup will be executed
+- When the data should be transitions to cold stage, in days, weeks, months, years, never
+- The backups retention period, such as days, weeks, months, years, forever
+
+Backup plans can be executed on-demand or on a schedule.
+
+All data is backed up to an S3 bucket that is managed and owned by AWS.
+
+### Backup Vault Lock
+
+Creating a Vault Lock enforces a Write Once Read Many (WORM) state for all the backups that your store in your AWS Backup vault.
+
+It provides an additional layer of defence to protect your backups against delete operations, as as protected against updates that shorten or alter retention periods.
+
+*Note: the root user of the account cannot manually delete backups when enabled.*
+
+
+
+## Amazon Data Lifecycle Manager
+
+You can use Amazon Data Lifecycle Manager to automate the creation, retention, and deletion of EBS snapshots and EBS-backed AMIs.
+
+Using this service, you can schedule backups and snapshots to be performed automatically as well as support cross-account backups.
+
+The service uses resource tasks to identify the resources that will need to be backed up (for example environment=production).
+
+This service cannot be used to backup instance-store AMIs or cannot be used to manage snapshots that few not created by Amazon Data Lifecycle manager.
+
+
+
+
 ## Amazon Macie
 
 Amazon Macie is a security service that uses machine learning and artificial intelligence (ML/ AI) technology to discover, classify, and protect sensitive data in the AWS Cloud. 
@@ -528,3 +611,13 @@ Macie supports AWS Organisations which allows for enabling sensitive data discov
 ### AWS CloudTrail Events
 
 Amazon Macie uses CloudTrail Events as a data source for monitoring and learning of possible anomalous behaviors in an AWS customer environment, assigning a risk level between 1 and 10 for each of CloudTrail’s supported events.
+
+## AWS Nitro Enclaves
+
+AWS Nitro Enclaves enables customers to create isolated compute environments to further protect and securely process highly sensitive data such as PII, healthcare and intellectual property data within their Amazon EC2 instances.
+
+Nitro Enclave is a fully isolated Virtual Machine, that is hardened and highly constrained - there is no persistent storage, external networking or interactive access. Only signed code can be executed within a Nitro Enclave.
+
+Common use cases include securing private keys, processing credit card, or secure multi-party computation.
+
+To use an Enclave, you must set Enclave to `true` when launching an EC2 instance.

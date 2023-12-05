@@ -460,11 +460,13 @@ Each group has a precedence value, which will be used for the default role (when
 
 *AWS Organisations* provides you with a centralised view of billing, access control, and the ability to share cross-account resources. Additionally, you can automate account provisioning by using the AWS Organisations APIs.
 
-AWS Accounts can be grouped into organisational units (OU) and can have service control policies (SCPs) assigned to limit the permissions within an account. 
+The main account is known as the management account, with all child accounts being grouped into organisational units (OU) and can have service control policies (SCPs) assigned to limit the permissions within an account. 
 
 OUs allow you to group accounts and other organisational units in a hierarchical structures, thus providing the ability to mimic your own organisational structure, as shown below.
 
 ![Organisations Account Hierarchy](./organisations-account-hierarchy.png)
+
+AWS Organisations allow for account level spitting of workloads, as well as enabling a standard set of services that all accounts should use, such as configuring CloudTrail to send logs into a centralised logged account.
 
 ### Service Control Policies
 
@@ -487,13 +489,56 @@ Service Control Policies (SCPs) can be used to centrally manage the available of
 
 Like IAM *permissions boundaries*, SCPs do not grant any permissions by themselves - users cannot perform any actions that the applied SCPs do not allow. The SCP boundaries always take precedence over the permissions defined through identity and resource-based policies. 
 
-It is important to note that in member accounts of an AWS Organisation, the root user is also affected by SCP boundaries
+It is important to note that in member accounts of an AWS Organisation, the root user is also affected by SCP boundaries. SCP policies cannot be applied to the management account otherwise you would be locked out of the organisation.
+
+*Note: the `aws:PrincipalOrgID` can be used on IAM Conditions to validates if the principal accessing the resource belongs to an account in your organisation.*
 
 ### AWS Single Sign-On
 
 AWS Single Sign-On (AWS SSO) is a single sign-on managed service that provides a centralised place for your users to access AWS accounts and other cloud applications.
 
 AWS SSO supports identity federation using SAML 2.0, allowing integration with AWS Managed Microsoft AD and their-party applications such as Azure Active Directory, Office 365, Concur and Salesforce.
+
+
+
+## AWS Control Tower
+
+AWS Control Tower provides a mechanism to set up and govern an AWS multi-account environment, following prescriptive best practices. AWS Control Tower *orchestrates* the capabilities of several other AWS Services including AWS Organisations, AWS Service Catalog, and AWS IAM Identity Center.
+
+AWS Control Tower orchestration extends the capabilities of AWS Organisations by preventing accounts from diverting away from the Organisation's from best practices, via the use of controls (sometimes called *guardrails*). For example, you can use controls to help ensure that security logs and necessary cross-account access permissions are created, and not altered.
+
+Benefits of using AWS Control Tower include:
+
+- Automated setup of environments
+- Automated policy management
+- Detect and remediate policy violations
+- Monitor compliance through a dashboard
+
+A multi-account environment (as created by Control Tower) is known as a Landing Zone.
+
+### Account Factory
+
+The Account Factory is used to automate the provision of accounts and deploy them into the correct OU. 
+
+It enables you to create pre-approved bases and configuration options for all your AWS accounts within the Organisation, such as VPC configuration, Subnet Configuration supported regions etc.
+
+It utilises the AWS Service Catalog to provision new AWS Accounts.
+
+### Guardrails
+
+Guardrail provides ongoing governance for your Control Tower environment (i.e. all your AWS Accounts).
+
+There are two types of Guardrails:
+
+- **Preventive** uses SCPs to prevent actions from occurring, such as disallow the creation of access keys for the root user
+- **Detective** uses AWS Config to detect if something has changed, such as detect whether MFA is enabled for the Root User
+
+#### Guardrail Levels
+
+- **Mandatory** are automatically enabled and enforced by AWS Control Tower, such as disallowing public read access to the Log Archive account
+- **Strongly Recommended** are based on AWS best practise and are optional, such as enabling encryption for EBS volumes attached to EC2 instances
+- **Elective** are commonly used by enterprises and are option, such as disallowing delete actions with MFA on S3 buckets
+
 
 
 ## Identity Federation

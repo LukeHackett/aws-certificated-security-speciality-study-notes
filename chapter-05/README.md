@@ -105,7 +105,7 @@ Rules within a NACL are evaluated starting with the lowest numbered rule, when a
 
 ## Elastic Load Balancing
 
-AWS offers three types of load balancing services under the name *Elastic Load Balancing*: *Application Load Balancer*, *Network Load Balancer*, and *Classic Load Balancer*. 
+AWS offers three types of load balancing services under the name *Elastic Load Balancing*: *Application Load Balancer*, *Network Load Balancer*, and *Classic Load Balancer*.
 
 Each type of Elastic Load Balancing implementations follow the same basic architecture:
 
@@ -130,20 +130,52 @@ An ALB provides additional functionality such as:
 
 ALB supports AWS Lambda functions as targets as well as user authentication.
 
+ALB does not support UDP or TCP directly - you will need to use an NLB for this.
+
 ### Network Load Balancer (NLB)
 
 An NLB operates at level 4 of the OSI model, routing connections based on IP and TCP or UDP protocol data. It is capable of handling millions of requests per second while maintaining ultra-low latencies. 
 
 An NLB provides additional functionality such as:
 
-- the use of static IP address, elastic IP address
+- the use of static IP address or you can use an elastic IP address (doesn't support DNS)
 - preservation of the client source IP address (for logging purposes)
+
+NLBs only support EC2 instances, private IPs or ALBs as target types.
+
+#### Client IP Preservation
+
+Client IP address can be forwarded onto the Network Load Balancer targets, when the Client IP preservation has been turned on. 
+
+When enable, you need to ensure that any Security Groups and NACLs have been updated accordingly.
+
+#### Security Groups
+
+NLBs can have a security group attached to them directly (as well as the targets). This allows the Security Groups of the targets to accept traffic from the Security Group of the NLB (similar to how ALBs work).
 
 ### Classic Load Balancer (CLB)
 
 A CLB enables basic load balancing across Amazon EC2 instances. A CLB is intended for applications that were built within the EC2-Classic network. 
 
 Exclusive CLB features include the support of the EC2-Classic platform as well as custom security policies.
+
+### SSL Certificates
+
+An SSL certificate allows traffic between your clients and your load balancer to be encrypted in transit. Public SSL certificates are issued by a Certificate Authorities (CA), such as Comodo, Symatec GoDaddy, DigiCert etc. 
+
+An ELB will have a certificate assigned to it, so that it will decrypt the encrypted traffic, and forward this information to the target groups, over the private VPC.
+
+When configuring a HTTP ELB listener, you must specify a default certificate, but can you optionally provide additional certificates to support multiple domains.
+
+Alternatively, Client can use the Server Name Indication (SNI) protocol to specify the hostname they intend to reach. SNI is a new protocol that requires the client to indicate the hostname of the target server in the initial SSL Handshake. The server will then find the correct certificate, or return the default one. SNI only works for ALB, NLB and CloudFront.
+
+Public SSL certificates can be managed by AWS Certificate Manager.
+
+### SSL Listener Security Policy
+
+A Security Policy is a combination of SSL protocols, SSL ciphers and Server order preference options supported during SSL negotiations.
+
+You can use predefined security policies and apply them to the ALB and NLB, such as enforcing TLS 1.3.
 
 
 ## API Gateway
