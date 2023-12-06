@@ -280,6 +280,12 @@ KMS Key Grants are often used by a service, to grant access to a KMS for for a g
 - Sharing EBS snapshots between accounts requires the snapshot to be decrypted first, then encrypted in the 2nd account
 - EBS encryption can be enabled by default at the account level - this is disabled by default
 
+#### Data Volume Wiping
+
+If you delete an EBS volume, it is overwritten with 0's by AWS before it can be allocated to a new volume.
+
+There is no need to manually wipe data - if an exam question asks this, then doing nothing is the correct answer!
+
 ### Protecting EFS with KMS
 
 - You cannot encrypt an existing EFS, so you must create a new EFS that is encrypted.
