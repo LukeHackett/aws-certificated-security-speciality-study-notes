@@ -52,6 +52,118 @@ IAM roles can be used in the following scenarios:
 - Grant permissions to applications running on Amazon EC2, which is called *AWS service role for an EC2 instance*.
 - In user federation scenarios, it’s possible to use IAM roles to grant permissions to external users authenticated through a trusted IdP.
 
+### IAM Policy
+
+#### NotAction
+
+Provide access to all the actions in an AWS service exempt for the actions specified in NotAction
+
+```json
+// Allow the principal to perform actions against anything, other than IAM
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "NotAction": "iam:*",
+      "Resource": "*"
+    }
+  ]
+}
+
+// Allow the principal to perform actions against anything, other than deleting a bucket
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "NotAction": "s3:DeleteBucket",
+      "Resource": "arn:aws:s3:::*"
+    }
+  ]
+}
+```
+
+Use the NotAction element in a Deny statement to prevent access to all the listed resources, except for those specified in the NotAction element
+
+```json5
+// Prevent all actions other than IAM against all resources when the MultiFactorAuth present
+// This enforces all users to use MFA for all services apart from IAM (as this service will generate the MFA token)
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "NotAction": "iam:*",
+      "Resource": "*",
+      "Condition": {
+        "BoolIfExists": {
+          "aws:MultiFactorAuthPresent": "false"
+        }
+      }
+    }
+  ]
+}
+```
+
+```json5
+// Deny all actions outside of eu-central-1 apart from S3
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "NotAction": "s3:*",
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestedRegion": ["eu-central-1"]
+        }
+      }
+    }
+  ]
+}
+```
+
+### IAM Condition Operators
+
+- `StringEquals` / `StringNotEquals` - case sensitive, exact matching
+- `StringLike` / `StringNotLike` - case sensitive, optional partial matching using *
+- `DateEquals`, `DateLessThan` - compare dates and time to a specific timestamp
+- `ArnLike` / `ArnNotLike` - used for comparing ARNs
+- `Bool` - check for a Boolean value
+- `IpAddress` / `NotIpAddress` - resolves to the IP address than the request originates from
+
+### Attribute-Based Access Control (ABAC)
+
+Allows you define fine-grained permissions based on user attributes, such as department, job role, team name etc.
+
+Each user would be tagged, and the IAM policies would be written so that they match the principal's tags, for example:
+
+```json5
+// Allow users to start and stop ec2 instances in an account, 
+// if they are the owner and a member of the same project
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "Action": [
+        "ec2:StartInstances",
+        "ec2:StopInstances"
+      ],
+      "Resource": "arn:aws:ec2:*:123456789:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Owner": "${aws:username}",
+          "aws:ResourceTag/AccessProject": "${aws:PrincipalTag/AccessProject}"
+        }
+      }
+    }
+  ]
+}
+```
+
 ### AWS Security Token Services
 
 The *AWS Security Token Services (STS)* is designed to provide trusted users and services with temporary security credentials that control access to AWS resources.
@@ -63,7 +175,7 @@ The main differences between long-term access keys and temporary security creden
   them are denied.
 - Temporary credentials are dynamic and generated every time a user requests them. A user can renew the temporary credentials before their expiration if they have permission to do so (by assuming the role again). Temporary credentials are valid for between 15 minutes and 1 hour.
 
-*Note: `AssumeRoleWithWebIdentity`` is not longer recommended by AWS, instead you should use Cognito.*
+*Note: `AssumeRoleWithWebIdentity` is not longer recommended by AWS, instead you should use Cognito.*
 
 #### STS Version 1 vs Version 2
 
