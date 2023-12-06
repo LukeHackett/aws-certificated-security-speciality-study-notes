@@ -256,6 +256,26 @@ A classic topology for VPN termination is shown below.
 
 ![vpn](./vpn.png)
 
+
+#### Site-to-Site VPN
+
+Site-to-Site VPN is used to link a corporate data centre to an AWS Region. A Customer Gateway is should be deployed within the corporate data centre, that is configured to point to the VPN Gateway on AWS.
+
+A traffic that flows on the VPN will be encrypted, but it will travel over the public internet.
+
+You can use public IPs of the Customer Gateway, or introduce a NAT gateway, which would allow for the use of private IPs.
+
+### AWS VPN CloudHub
+
+The AWS VPN CloudHub operates on a simple hub-and-spoke model that you can use with or without a VPC.
+
+This approach provides secure communications between multiple sites if you have a VPN connection.
+
+One side-effect is that it allows multiple data centres to talk to each other, as well as communicating with the linked AWS Region.
+
+![VPN CloudHub](./vpn-cloudhub.png)
+
+
 ### Protecting DNS
 
 The Domain Name System (DNS) is a hierarchical and decentralised directory that maps the assigned hostnames of resources connected to the Internet or other IP networks to their corresponding IP addresses.

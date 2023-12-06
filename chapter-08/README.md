@@ -211,3 +211,79 @@ Manually managing Security hygiene at scale is often problematic. AWS Systems Ma
 - **Grouping** is creating groups of resources (such as grouping EC2 instances per application) to reflect an application stack or an environment.
 - **Improving Visibility** means centrally viewing patch compliance (using SSM Patch Manager) and operational issues (using SSM OpsCenter).
 - **Taking actions** is automating remediation actions on groups of resources using SSM automatons, for example SSM Session Manager can run scripts and commands Amazon EC2 instances with the Run command, while re-mediating vulnerabilities via patches can be completed using SSM Patch Manager.
+
+
+
+## CloudFormation
+
+AWS CloudFormation is a service that helps you model and set up your AWS resources so that you can spend less time managing those resources and more time focusing on your applications that run in AWS. You create a template that describes all the AWS resources that you want (like Amazon EC2 instances or Amazon RDS DB instances), and CloudFormation takes care of provisioning and configuring those resources for you.
+
+### Drift
+
+While CloudFormation can manage resources, it does not protect against manual changes. When changes are made to a resume that was not completed by CloudFormation, this is know as a *drift*.
+
+By performing a "drift section", CloudFormation is able to compare the resources deployed in the account with what was defined within the CloudFormation template.
+
+### Termination Protection
+
+To prevent accidental stack deletes, you can enable Termination protection.
+
+When enabled, users will get an error when they try to delete the stack. To delete the stack, the user would need to disable to termination protection, and delete the stack.
+
+### Stack Policies
+
+A CloudFormation stack policy is a JSON document that defines the update actions that can be performed on designated resources within a CloudFormation stack. 
+
+It allows you to control who can update the stack and what changes they can make. 
+
+Stack policies can help prevent unintended changes to your infrastructure and enforce security best practices.
+
+```json5
+{
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Resource": "*",
+      "Action": [
+        "UpdateStack"
+      ]
+    },
+    {
+      "Effect": "Deny",
+      "Principal": "*",
+      "Resource": "LogicalResourceId/CriticalSecurityGroup",
+      "Action": [
+        "UpdateStack"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::123456789012:user/my-user"
+      },
+      "Resource": "*",
+      "Action": [
+        "UpdateStack",
+        "DeleteStack"
+      ]
+    }
+  ]
+}
+```
+
+More example can be found on the [Prevent updates to stack resources](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/protect-stack-resources.html) page.
+
+### Dynamic References
+
+CloudFormation can be used to reference parameters stored within SSM Parameter store of Secrets Manager, and currently supports:
+
+- `ssm`: Systems Manager Parameter Store plaintext parameter.
+- `ssm-secure`: Systems Manager Parameter Store secure string parameter.
+- `secretsmanager`: Secrets Manager secret.
+
+### Guard
+
+AWS CloudFormation Guard is an open-source cli tool that is used to validate CloudFormation templates against organisation policy guidelines.
+
+You can define your own policies using code using a DSL language, and can be used as part of your CI/CD pipelines to enforce your security policies.

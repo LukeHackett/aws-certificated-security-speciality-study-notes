@@ -52,6 +52,118 @@ IAM roles can be used in the following scenarios:
 - Grant permissions to applications running on Amazon EC2, which is called *AWS service role for an EC2 instance*.
 - In user federation scenarios, it’s possible to use IAM roles to grant permissions to external users authenticated through a trusted IdP.
 
+### IAM Policy
+
+#### NotAction
+
+Provide access to all the actions in an AWS service exempt for the actions specified in NotAction
+
+```json
+// Allow the principal to perform actions against anything, other than IAM
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "NotAction": "iam:*",
+      "Resource": "*"
+    }
+  ]
+}
+
+// Allow the principal to perform actions against anything, other than deleting a bucket
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "NotAction": "s3:DeleteBucket",
+      "Resource": "arn:aws:s3:::*"
+    }
+  ]
+}
+```
+
+Use the NotAction element in a Deny statement to prevent access to all the listed resources, except for those specified in the NotAction element
+
+```json5
+// Prevent all actions other than IAM against all resources when the MultiFactorAuth present
+// This enforces all users to use MFA for all services apart from IAM (as this service will generate the MFA token)
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "NotAction": "iam:*",
+      "Resource": "*",
+      "Condition": {
+        "BoolIfExists": {
+          "aws:MultiFactorAuthPresent": "false"
+        }
+      }
+    }
+  ]
+}
+```
+
+```json5
+// Deny all actions outside of eu-central-1 apart from S3
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "NotAction": "s3:*",
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestedRegion": ["eu-central-1"]
+        }
+      }
+    }
+  ]
+}
+```
+
+### IAM Condition Operators
+
+- `StringEquals` / `StringNotEquals` - case sensitive, exact matching
+- `StringLike` / `StringNotLike` - case sensitive, optional partial matching using *
+- `DateEquals`, `DateLessThan` - compare dates and time to a specific timestamp
+- `ArnLike` / `ArnNotLike` - used for comparing ARNs
+- `Bool` - check for a Boolean value
+- `IpAddress` / `NotIpAddress` - resolves to the IP address than the request originates from
+
+### Attribute-Based Access Control (ABAC)
+
+Allows you define fine-grained permissions based on user attributes, such as department, job role, team name etc.
+
+Each user would be tagged, and the IAM policies would be written so that they match the principal's tags, for example:
+
+```json5
+// Allow users to start and stop ec2 instances in an account, 
+// if they are the owner and a member of the same project
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "Action": [
+        "ec2:StartInstances",
+        "ec2:StopInstances"
+      ],
+      "Resource": "arn:aws:ec2:*:123456789:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Owner": "${aws:username}",
+          "aws:ResourceTag/AccessProject": "${aws:PrincipalTag/AccessProject}"
+        }
+      }
+    }
+  ]
+}
+```
+
 ### AWS Security Token Services
 
 The *AWS Security Token Services (STS)* is designed to provide trusted users and services with temporary security credentials that control access to AWS resources.
@@ -61,7 +173,43 @@ The main differences between long-term access keys and temporary security creden
 - When you issue a temporary security credential, you can specify the expiration interval of that credential, which can range from a few minutes to several hours. 
 - Once the temporary credentials are expired, they are are no longer recognised by AWS, and any API requests made with
   them are denied.
-- Temporary credentials are dynamic and generated every time a user requests them. A user can renew the temporary credentials before their expiration if they have permission to do so (by assuming the role again).
+- Temporary credentials are dynamic and generated every time a user requests them. A user can renew the temporary credentials before their expiration if they have permission to do so (by assuming the role again). Temporary credentials are valid for between 15 minutes and 1 hour.
+
+*Note: `AssumeRoleWithWebIdentity` is not longer recommended by AWS, instead you should use Cognito.*
+
+#### STS Version 1 vs Version 2
+
+STS v1 uses the Global STS service and only supports the AWS Region that are enabled on the AWS Account.
+
+STS v2 uses the regional endpoints, which helps to reduce latency. Tokens can be used for any region, regardless of their issuing region.
+
+STS v1 tokens do not work with STS v2.
+
+**Exam Tip:** If an error occurs such as "AWS was not able to validate the provided access credentials", the answer will be one of:
+
+1. Use the regional endpoint (in any region), which will return v2 tokens 
+2. Configure STS Global endpoint to issue STS Tokens V2 (it will default to v1)
+
+#### STS External ID
+
+At times, you need to give a third party access to your AWS resources (delegate access). One important aspect of this scenario is the External ID, which is optional information that you can use in an IAM role trust policy to designate who can assume the role.
+
+The IAM Role will have a condition of `sts:ExternalId` that should equal the ExternalId, e.g. `12345`. *Note: AWS recommends using a random unique value, such as a UUID.*
+
+This will help to solve the "confused deputy" problem (as shown below).
+
+![Confused Deputy Problem](./confused-deputy-problem.png)
+
+#### STS Revoke Temporary Credentials
+
+If STS credentials are exposed, you will need to add an inline policy into the Role that has been used by the exposed credentials.
+
+The inline policy will deny all actions if the token is older than a given timestamp (the timestamp of the compromise).
+
+The condition similar to the one shown below, should be assigned as an inline policy, which will prevent anyone from using the role if their token was issues before the given timestamp.
+
+`"Condition": {"DateGreaterThan": {"aws:TokenIssueTime": "2020-01-01T00:00:01Z"}}`
+
 
 #### Roles for Cross-Account Access
 
@@ -227,6 +375,36 @@ The user can have their administrator policy limited, by applying a permissions 
 When using permission boundaries, the resulting permission set that is allowed is known as *effective permissions*. IN the example above, the effective permissions would be S3 access, even though the administrator policy was applied.
 
 
+### Multi-Factor Authentication (MFA)
+
+AWS multi-factor authentication (MFA) is a best practice that requires a second authentication factor in addition to user name and password sign-in credentials. You can enable MFA at the AWS account level for root and IAM users you have created in your account.  
+
+AWS Supports the following devices:
+
+- Virtual MFA Device (e.g. app installed on your phone)
+- U2F Key fob (e.g. a Yubi key)
+- Hardware Key fob (e.g. for use with the GovCloud)
+
+Enabling MFA delete on resources prevents destructive operations from occurring, such as:
+
+- Permanently deleting an object version in S3
+- Suspending versioning on an s3 bucket
+
+*Note: Only the bucket owner (i.e. the root account) can enable disable MFA delete.*
+
+#### MFA & IAM Conditions
+
+You can force the use of MFA as part of an IAM condition `aws:MultiFactorAuthPresent` which has a value of `true/false`. This forces users to have previously authenticated via MFA in order to perform actions using an IAM Role.
+
+You can restrict access to an IAM role within a specified time of the MFA being granted using `aws:MultiFactorAuthAge` which has a value of the number of seconds `300`.
+
+
+### IAM Credentials Report
+
+You can generate and download a credential report that lists all users in your account and the status of their various credentials, including passwords, access keys, and MFA devices. 
+
+The credentials report helps with compliance.
+
 
 ## Access Management in Amazon S3
 
@@ -367,6 +545,8 @@ Users in a user pool can sign in with their registered credentials or by using a
 
 Upon successful authentication, Amazon Cognito returns a set of JWTs that the application developer can use to secure and authorise access to application APIs or use to obtain AWS temporary credentials.
 
+Cognito User pools integrate with API Gateway and ALB natively.
+
 #### Amazon Cognito Identity Pools
 
 Amazon Cognito *identity pools* allow you to create unique identifiers for guest users who access your application and authenticate these users with identity providers. The identities can then be exchanged for temporary, limited-privilege AWS credentials for access other AWS services. 
@@ -375,16 +555,30 @@ Identity pools support both authenticated and unauthenticated journeys (associat
 
 ![Identity Pools Authentication Flow](./identity-pools-authentication-flow.png)
 
+##### IAM Roles
+
+You can partition your user's access policies using variables, which is useful for allowing users to upload files into an S3 bucket, with a prefix of their username, for example:
+
+`"Condition": {"StringLike": {"s3:prefix": "{cognito-identity.aws.com:sub}/*"}}`
+
+#### User Pool Groups
+
+Users can be grouped, which can have an optional IAM role attached.
+
+Each group has a precedence value, which will be used for the default role (when multiple roles exists), but you can assume there other roles via IAM.
+
 
 ## Multi-Account Management with AWS Organisations
 
 *AWS Organisations* provides you with a centralised view of billing, access control, and the ability to share cross-account resources. Additionally, you can automate account provisioning by using the AWS Organisations APIs.
 
-AWS Accounts can be grouped into organisational units (OU) and can have service control policies (SCPs) assigned to limit the permissions within an account. 
+The main account is known as the management account, with all child accounts being grouped into organisational units (OU) and can have service control policies (SCPs) assigned to limit the permissions within an account. 
 
 OUs allow you to group accounts and other organisational units in a hierarchical structures, thus providing the ability to mimic your own organisational structure, as shown below.
 
 ![Organisations Account Hierarchy](./organisations-account-hierarchy.png)
+
+AWS Organisations allow for account level spitting of workloads, as well as enabling a standard set of services that all accounts should use, such as configuring CloudTrail to send logs into a centralised logged account.
 
 ### Service Control Policies
 
@@ -407,7 +601,9 @@ Service Control Policies (SCPs) can be used to centrally manage the available of
 
 Like IAM *permissions boundaries*, SCPs do not grant any permissions by themselves - users cannot perform any actions that the applied SCPs do not allow. The SCP boundaries always take precedence over the permissions defined through identity and resource-based policies. 
 
-It is important to note that in member accounts of an AWS Organisation, the root user is also affected by SCP boundaries
+It is important to note that in member accounts of an AWS Organisation, the root user is also affected by SCP boundaries. SCP policies cannot be applied to the management account otherwise you would be locked out of the organisation.
+
+*Note: the `aws:PrincipalOrgID` can be used on IAM Conditions to validates if the principal accessing the resource belongs to an account in your organisation.*
 
 ### AWS Single Sign-On
 
@@ -416,7 +612,73 @@ AWS Single Sign-On (AWS SSO) is a single sign-on managed service that provides a
 AWS SSO supports identity federation using SAML 2.0, allowing integration with AWS Managed Microsoft AD and their-party applications such as Azure Active Directory, Office 365, Concur and Salesforce.
 
 
-## Microsoft AD Federation with AWS 
+
+## AWS Control Tower
+
+AWS Control Tower provides a mechanism to set up and govern an AWS multi-account environment, following prescriptive best practices. AWS Control Tower *orchestrates* the capabilities of several other AWS Services including AWS Organisations, AWS Service Catalog, and AWS IAM Identity Center.
+
+AWS Control Tower orchestration extends the capabilities of AWS Organisations by preventing accounts from diverting away from the Organisation's from best practices, via the use of controls (sometimes called *guardrails*). For example, you can use controls to help ensure that security logs and necessary cross-account access permissions are created, and not altered.
+
+Benefits of using AWS Control Tower include:
+
+- Automated setup of environments
+- Automated policy management
+- Detect and remediate policy violations
+- Monitor compliance through a dashboard
+
+A multi-account environment (as created by Control Tower) is known as a Landing Zone.
+
+### Account Factory
+
+The Account Factory is used to automate the provision of accounts and deploy them into the correct OU. 
+
+It enables you to create pre-approved bases and configuration options for all your AWS accounts within the Organisation, such as VPC configuration, Subnet Configuration supported regions etc.
+
+It utilises the AWS Service Catalog to provision new AWS Accounts.
+
+### Guardrails
+
+Guardrail provides ongoing governance for your Control Tower environment (i.e. all your AWS Accounts).
+
+There are two types of Guardrails:
+
+- **Preventive** uses SCPs to prevent actions from occurring, such as disallow the creation of access keys for the root user
+- **Detective** uses AWS Config to detect if something has changed, such as detect whether MFA is enabled for the Root User
+
+#### Guardrail Levels
+
+- **Mandatory** are automatically enabled and enforced by AWS Control Tower, such as disallowing public read access to the Log Archive account
+- **Strongly Recommended** are based on AWS best practise and are optional, such as enabling encryption for EBS volumes attached to EC2 instances
+- **Elective** are commonly used by enterprises and are option, such as disallowing delete actions with MFA on S3 buckets
+
+
+
+## Identity Federation
+
+Identity Federation provides users outside of AWS permissions to access AWS resources in your added.
+
+Identity Federation supports:
+
+- SAML 2.0
+- Custom Identity Brokers
+- Web Identity with/without Cognito (without is no longer recommended)
+- Single-Sign-On (SSO)
+
+There is no requirement to create IAM users, but you will need to define a mapping between the IdP users an an IAM role that the users will assume.
+
+### AWS identity Centre (aka AWS SSO)
+
+AWS IAM Identity Center makes it easy to centrally manage access to multiple AWS accounts and business applications. It provides your workforce with single sign-on access to all assigned accounts and applications from one place.
+
+AWS Identity Centre supports AWS identity management such as IAM Identity Centre, or 3rd Part services, such as Active Directory, OneLogin or Okta.
+
+Permission sets are associated to an OU or Account, and are assigned to a group of users.
+
+The users can assume the permission set when logging to the SSO UI.
+
+Permissions can be assigned to multiple accounts, or by using ABAC (which provides various levels of access to users).
+
+### Microsoft AD Federation with AWS 
 
 AWS enables you to implement identity federation to sign in to AWS Console using Microsoft Active Directory (AD) credentials. With identity federation, you can use an existing corporate AD to perform all user administration and thus skip manually creating user credentials in AWS.
 
@@ -427,8 +689,14 @@ AD federation has a couple of key terms:
 
 Although the AWS Certified Security – Specialty exam does not require you to configure a Microsoft AD federation with AWS, you should have a clear understanding of how the process works (see diagram below).
 
-
 ![Microsoft AD Federation with AWS](./microsoft-ad-federation-with-aws.png)
+
+
+## AWS Directory Services
+
+Active Directory (AD) is a database of user accounts, computers, printers file shares and security groups (all referred to as objects). Objects are organised into a tree structure, and trees are grouped into a forest.
+
+It is a centralised security management platform, as well as a way of creating account-level permissions.
 
 
 ## Protection Credentials with AWS Secrets Manager
@@ -440,6 +708,8 @@ When using AWS Secrets Manager, you can remove hard-coded credentials, passwords
 AWS Secrets Manager provides integration with AWS CloudFormation through resource types that enable you to create secrets as part of an AWS CloudFormation template.
 
 All secrets managed by AWS Secrets Manager are encrypted at rest using the Amazon Key Management Service (KMS) service.
+
+Secrets can be replicated into a secondary region, with updates also being applied into the replicated region, which helps to support Active/ACtive workloads or DR scenarios. Replicate is a read-only operation, i.e. updates to the secret should only be done in the primary region.
 
 ### Secrets Permission Management
 

@@ -17,9 +17,15 @@ When writing logs into an S3 bucket, the trail will need to be provided the requ
 
 ### Amazon CloudWatch Logs
 
-Amazon CloudWatch Logs can be used to monitor, store, and access log files from various sources including, EC2 ,instances, AWS CloudTrail and Route 53.
+Amazon CloudWatch Logs can be used to monitor, store, and access log files from various sources including, EC2 instances, AWS CloudTrail and Route 53.
 
 To view EC2 logs within CloudWatch Logs, you must install an agent on the instance, and provide the instance the required permissions to write logs into an AWS CloudWatch Log Group. You must also ensure that the `awslogs` agent is running on the instance at all times.
+
+#### Route 53 Logging
+
+DNS Logs for publicly hosted zones can be queried only via CloudWatch Logs - private hosted zones can not be queried at all.
+
+Enabling the Route 53 Resolver Query Logging feature will allow for DNS queries made by resources within a VPC to be logged. DNS logs can be sent to CloudWatch, S3 or Data Firehose.
 
 ### Amazon CloudWatch Event
 

@@ -85,6 +85,9 @@ Security groups are *stateful*, which means that return traffic from an allowed 
 
 Each ENI can support up to five security groups per network interface. When multiple security groups are attached to the same ENI, the rules from each security group are effectively aggregated to create a unique set of rules as if they belonged to a single security group.
 
+Security Groups can also reference prefix lists, which are a list of destinations that can be centrally updated, for example AWS provides these for it's services such as S3 and DynamoDB.
+
+**Exam Tips:** When modifying a Security Group, existing connection will be left alone until they timeout or the session is closed. If you need to force the closing of the connection, you can temporarily apply the same rule onto the NACL which will kill the session. For example, when disabling ssh, to force kill all active connections, you can update the security group and the NACL - with the latter killing the connection immediately.
 
 
 ## Network Access Control Lists
@@ -97,11 +100,12 @@ A NACL is stateless, meaning that it doesn’t use connection tracking and doesn
 
 Rules within a NACL are evaluated starting with the lowest numbered rule, when a rule matches traffic, it is immediately applied independently of any higher-numbered rule that may contradict it.
 
+**Exam Tips:** When modifying a NACL, the change is applied straight away, ie all active connection that are affected by the rule change will be killed. 
 
 
 ## Elastic Load Balancing
 
-AWS offers three types of load balancing services under the name *Elastic Load Balancing*: *Application Load Balancer*, *Network Load Balancer*, and *Classic Load Balancer*. 
+AWS offers three types of load balancing services under the name *Elastic Load Balancing*: *Application Load Balancer*, *Network Load Balancer*, and *Classic Load Balancer*.
 
 Each type of Elastic Load Balancing implementations follow the same basic architecture:
 
@@ -126,14 +130,28 @@ An ALB provides additional functionality such as:
 
 ALB supports AWS Lambda functions as targets as well as user authentication.
 
+ALB does not support UDP or TCP directly - you will need to use an NLB for this.
+
 ### Network Load Balancer (NLB)
 
 An NLB operates at level 4 of the OSI model, routing connections based on IP and TCP or UDP protocol data. It is capable of handling millions of requests per second while maintaining ultra-low latencies. 
 
 An NLB provides additional functionality such as:
 
-- the use of static IP address, elastic IP address
+- the use of static IP address or you can use an elastic IP address (doesn't support DNS)
 - preservation of the client source IP address (for logging purposes)
+
+NLBs only support EC2 instances, private IPs or ALBs as target types.
+
+#### Client IP Preservation
+
+Client IP address can be forwarded onto the Network Load Balancer targets, when the Client IP preservation has been turned on. 
+
+When enable, you need to ensure that any Security Groups and NACLs have been updated accordingly.
+
+#### Security Groups
+
+NLBs can have a security group attached to them directly (as well as the targets). This allows the Security Groups of the targets to accept traffic from the Security Group of the NLB (similar to how ALBs work).
 
 ### Classic Load Balancer (CLB)
 
@@ -141,6 +159,34 @@ A CLB enables basic load balancing across Amazon EC2 instances. A CLB is intende
 
 Exclusive CLB features include the support of the EC2-Classic platform as well as custom security policies.
 
+### SSL Certificates
+
+An SSL certificate allows traffic between your clients and your load balancer to be encrypted in transit. Public SSL certificates are issued by a Certificate Authorities (CA), such as Comodo, Symatec GoDaddy, DigiCert etc. 
+
+An ELB will have a certificate assigned to it, so that it will decrypt the encrypted traffic, and forward this information to the target groups, over the private VPC.
+
+When configuring a HTTP ELB listener, you must specify a default certificate, but can you optionally provide additional certificates to support multiple domains.
+
+Alternatively, Client can use the Server Name Indication (SNI) protocol to specify the hostname they intend to reach. SNI is a new protocol that requires the client to indicate the hostname of the target server in the initial SSL Handshake. The server will then find the correct certificate, or return the default one. SNI only works for ALB, NLB and CloudFront.
+
+Public SSL certificates can be managed by AWS Certificate Manager.
+
+### SSL Listener Security Policy
+
+A Security Policy is a combination of SSL protocols, SSL ciphers and Server order preference options supported during SSL negotiations.
+
+You can use predefined security policies and apply them to the ALB and NLB, such as enforcing TLS 1.3.
+
+
+## API Gateway
+
+API Gateways support Resource policies, which can be used to restrict which IPs can access Public API Gateways.
+
+Private API Gateways can only be accessed from within a VPC, but you should still add `SourceVPC` as a condition on the Resource policy to restrict this further.
+
+There is a limit of 10K requests per second across all API Gateways deployed in an Account - this limit can be increased, but it is a per account limit, not per API Gateway.
+
+**Exam Tip:** Account A can call a Private API Gateway deployed in Account B via a VPC interface - you do not need to use VPC Peering
 
 
 ## VPC Endpoints
@@ -152,6 +198,11 @@ There are two types of VPC endpoints:
 - **Gateway endpoint** is a gateway that you specify as a target for a route in your route table for traffic destined to AWS services such as Amazon S3 and Amazon DynamoDB
 - **Interface endpoint** is an elastic network interface with a private IP address on a subnet that serves as an entry point for traffic between this subnet and AWS services (such as EMR, ECS, KMS etc).
 
+### VPC Endpoint Policy
+
+A VPC Endpoint policy controls which AWS principals can use the VPC endpoint to access AWS services. VPC Endpoint policies can be attached to VPC Gateways and Interfaces. This is useful, for when you are looking to restrict certain users or services from making networking calls to other services.
+
+*Note: this does not override the security policies on the target resource, such as S3 Bucket Policies.*
 
 
 ## VPC Flow Logs
@@ -169,6 +220,95 @@ When creating a flow log, the following parameters will be required:
 - **Destination** specifies where the logs are to be stored, can be either Amazon CloudWatch Logs or Amazon S3
 - **IAM Role** specifies the role that has the permission to publish the logs into the destination.
 
+*Note: traffic is not captured for Amazon DNS queries, Windows License Activations EC2 instance Metadata (i.e. 169.2354.169.254), DHCP traffic or mirrored traffic.*
+
+
+
+## VPC Network Analyzer
+
+Amazon VPC Network Access Analyzer helps you identify network configurations that lead to unintended network access.
+
+VPC Network Analyzer evaluates requirements against network resources within a VPC, and can be used to demonstrate compliance, for example proofing that here are not publicly accessible resources within a VPC.
+
+In order to utilise this, you will need to create a Network Access Scope JSON document, that defined certain conditions regarding your network security policy.
+
+
+## AWS Private Link
+
+AWS PrivateLink provides private connectivity between VPCs, supported AWS services, and your on-premises networks without exposing your traffic to the public internet. Interface VPC endpoints, powered by PrivateLink, connect you to services hosted by AWS Partners and supported solutions available in AWS Marketplace.
+
+This approach does not require VPC peering, which would open access to the entire network, and has limits to the number of connections allowed.
+
+Private Link does not require a NAT, Internet Gateway or IP Tables to be updated.
+
+## AWS Transit Gateway
+
+AWS Transit Gateway connects your Amazon Virtual Private Clouds (VPCs) and on-premises networks through a central hub.
+
+All connected VPCs can talk to each other if configured (unlike VPC peering).
+
+The Transit Gateway route tables define which VPCs can communicate with the Transit Gateway.
+
+### Transit Gateway ECMP
+
+Equal-Cost, Multipath is a routing strategy that allows for packets to be routed of multiple best paths.
+
+The main use case is to create multiple site-to-site VPN connections to increase the bandwidth and available of your connection to AWS.
+
+
+### Amazon CloudFront
+
+AWS CloudFront integrates with Shield and WAF for DDoS protection.
+
+When using CloudFront and S3, you should always be using Origin Access Control (OAC), which is the replacement of Origin Access Identity (OAI).
+
+### Geo Restriction
+
+You can create an Allow/block list of countries that cannot access the CDN
+
+The most common use case is to control copyright requests
+
+### Signed Url & Cookies
+
+Signed URLs/Cookies allows certain users to access your content.
+
+Each signed URL (or cookie) must be generated with details of the IP ranges to access the data from and the url expiration.
+
+![Signed Url](./signed-url-cookie.png)
+
+A Signed URL can only prove access to individual files, i.e. one signed url per file, where as a Signed Cookie allows access to multiple files, i.e. one signed cookie for many files.
+
+To add a CloudFront key-pair you must use the root account, and this is not recommended. Alternatively, you should setup a trusted key group which supports rotating keys and the management of key groups is achieved via IAM policies.
+
+After a key-pair has been created, the application will use the private key to sign a request, and CloudFront will verify the request using the public key.
+
+#### CloudFront Signed URL vs S3 Pre-Signed URL
+
+CloudFront signed urls works with all cloudfront origins, such as ELB, Api Gateway etc. It also supports caching of the content, and uses an account-wide key-pair which is managed by the root account.
+
+S3 Pre-signed URLs are issued as the perform for generated the pre-signed url (i.e. not able to be shared with other users), as well as having a limited time span and no caching support.
+
+### Field Level Encryption
+
+Field Level Encryption can be used to encrypt (up to 10 fields) at the edge location as part of a HTTP POST request to a CloudFront-fronted service. 
+
+This ensures that data (such as credit card information), is encrypted at the edge location, and hence is passed to CloudFront, and onto the ALB completely encrypted. The origin server will need to decrypt the data once it has received the encrypted data.
+
+![Field Level Encryption](./field-level-encryption.png)
+
+### Origin Access Control (OAC)
+
+OAC supports SSE-KMS natively, but to you will need to add CloudFront to the KMS key policy in order for it to be used,
+
+OAI is no longer recommended, as it only supports SSE-S3 encryption.
+
+### Exam Tips
+
+One scenario that comes up is to prevent users from directly accessing the origin ALB or custom servers.
+
+The solution is to configure CloudFront to add a custom header and a secret value to each request, such as `X-MY-HEADER: MY-SECRET`. The origin ALB should only accept requests, if the custom header and value is present.
+
+Another Scenario involves CloudFront and Cognito - to protect the origin servers, you can use Lambda@Edge to validate the Cognito JWT token, the JWT token is valid, then the request can be forwarded onto the origin servers, otherwise it can be rejected.
 
 
 ## AWS Web Application Firewall
@@ -183,6 +323,9 @@ A custom rule can be created, and can be configured to match on any number of pr
 
 AWS WAF offers near real-time visibility into your web traffic, allowing you to create new alerts in Amazon CloudWatch.
 
+WAF Logs can be sent to CloudWatch or S3 buckets, as well as Kinesis Data Firehose.
+
+AWS WAF does not perform DDoS protection - this is AWS Shield!
 
 
 ## AWS Shield
@@ -208,4 +351,41 @@ AWS Shield Advanced provides the following distinct features:
 - **24/7 access to the AWS DDoS Response Team (DRT)** for manual mitigation of edge cases affecting your availability such as custom rules intended to mitigate application layer DDoS attacks in your environments.
 - **Cost protection** reimbursements will be applied to you account due to DDoS-related cost spikes relating to Amazon EC2, Elastic Load Balancing, Amazon Route 53, Amazon CloudFront, and AWS Global Accelerator.
 
+Additionally, AWS Shield Advanced provides a number of CloudWatch Metrics to help deduce if there is a DDoS attack currently happening:
+
+- `DDoSDetected`
+- `DDoSAttackBitsPerSecond`
+- `DDoSAttackPacketsPerSecond`
+- `DDoSAttackRequestsPerSecond`
+
 AWS Shield Advanced is not activated by default, and has an estimated cost of $3,000 per month (with a 12-month commitment).
+
+## AWS Firewall Manager
+
+AWS Firewall Manager is a security management service that allows you to centrally configure and manage firewall rules across your accounts and applications in AWS Organisations.
+
+AWS Firewall Manager allow for the application of a standard set of policies across multiple services including:
+
+- WAF Rules
+- AWS Shield Advanced
+- Security Groups
+- AWS Network Firewall
+- Amazon Route 53
+
+All policies that are applied, are regional based - i.e. not global.
+
+## WAF vs Shield vs Firewall Manager
+
+- WAF is for granular protection of resources via the Web ACL definitions
+- Shield adds an extra layer of protection, including DDoS protection
+- Firewall Manager automates the protect of new resources
+
+## AWS Network Firewall
+
+AWS Network Firewall allows you to define firewall rules that provide fine-grained control over network traffic that enters or leaves your network.
+
+It operates at layers 3 - 7 and rules can be centrally managed across multiple accounts.
+
+Rules can be set to allow, deny or alert on traffic matches, with all matches being forwarded to S3, CloudWatch Logs or Kinesis Data Firehose.
+
+**Exam Tip:** GuardDuty can report findings into Security Hub, which can trigger a Lambda function to update Network Firewall rule(s) to prevent traffic from entering/leaving the VPC (a common exam question).
